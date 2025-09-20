@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
-import 'theme_colors.dart';
+import 'app_theme.dart';
+import '../constants/app_colors.dart';
 
 /// Utility class for common decoration patterns
 /// Helps maintain consistency and reduces code duplication
 class DecorationUtils {
-  static ThemeColors get _colors => ThemeColors.instance;
-
   /// Standard card decoration
-  static BoxDecoration cardDecoration({
+  static BoxDecoration cardDecoration(
+    BuildContext context, {
     Color? backgroundColor,
     double borderRadius = 16.0,
   }) {
+    final appTheme = context.appTheme;
     return BoxDecoration(
-      color: backgroundColor ?? _colors.cardBackground,
+      color: backgroundColor ?? appTheme.cardBackground,
       borderRadius: BorderRadius.circular(borderRadius),
       boxShadow: [
         BoxShadow(
-          color: _colors.cardShadow,
+          color: appTheme.cardShadow,
           blurRadius: 8.0,
           offset: Offset(0, 4),
         ),
@@ -25,18 +26,20 @@ class DecorationUtils {
   }
 
   /// Standard button decoration with shadow
-  static BoxDecoration buttonDecoration({
+  static BoxDecoration buttonDecoration(
+    BuildContext context, {
     required Color backgroundColor,
     double borderRadius = 12.0,
     double shadowBlur = 8.0,
     double shadowOffset = 4.0,
   }) {
+    final appTheme = context.appTheme;
     return BoxDecoration(
       color: backgroundColor,
       borderRadius: BorderRadius.circular(borderRadius),
       boxShadow: [
         BoxShadow(
-          color: _colors.cardShadow,
+          color: appTheme.cardShadow,
           blurRadius: shadowBlur,
           offset: Offset(0, shadowOffset),
         ),
@@ -45,23 +48,26 @@ class DecorationUtils {
   }
 
   /// Standard tile decoration for list items
-  static BoxDecoration tileDecoration({
+  static BoxDecoration tileDecoration(
+    BuildContext context, {
     Color? backgroundColor,
     bool isSelected = false,
     double borderRadius = 12.0,
     double shadowBlur = 4.0,
     double shadowOffset = 2.0,
   }) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return BoxDecoration(
-      color: backgroundColor ?? _colors.surface,
+      color: backgroundColor ?? appTheme.surface,
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: isSelected ? _colors.primaryBlue : _colors.divider,
+        color: isSelected ? theme.primaryColor : appTheme.divider,
         width: isSelected ? 2 : 1,
       ),
       boxShadow: [
         BoxShadow(
-          color: _colors.cardShadow,
+          color: appTheme.cardShadow,
           blurRadius: shadowBlur,
           offset: Offset(0, shadowOffset),
         ),
@@ -70,18 +76,21 @@ class DecorationUtils {
   }
 
   /// Standard checkbox tile decoration
-  static BoxDecoration checkboxTileDecoration({
+  static BoxDecoration checkboxTileDecoration(
+    BuildContext context, {
     required bool isChecked,
     Color? backgroundColor,
     double borderRadius = 8.0,
   }) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return BoxDecoration(
       color: isChecked 
-          ? _colors.primaryBlue.withValues(alpha: 0.1) 
-          : (backgroundColor ?? _colors.surface),
+          ? theme.primaryColor.withValues(alpha: 0.1) 
+          : (backgroundColor ?? appTheme.surface),
       borderRadius: BorderRadius.circular(borderRadius),
       border: Border.all(
-        color: isChecked ? _colors.primaryBlue : _colors.divider,
+        color: isChecked ? theme.primaryColor : appTheme.divider,
         width: isChecked ? 2 : 1,
       ),
     );

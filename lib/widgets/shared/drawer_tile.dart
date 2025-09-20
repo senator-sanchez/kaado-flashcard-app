@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/theme_colors.dart';
+import '../../utils/app_theme.dart';
 import '../../utils/decoration_utils.dart';
 
 /// Shared drawer tile component for consistent styling
@@ -27,12 +27,26 @@ class DrawerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: DecorationUtils.tileDecoration(
-        isSelected: isSelected,
+      decoration: BoxDecoration(
+        color: appTheme.surface, // Use surface color
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? theme.primaryColor : appTheme.divider,
+          width: isSelected ? 2 : 1,
+        ),
+        // Remove heavy shadows - use subtle shadows like v10.2
+        boxShadow: [
+          BoxShadow(
+            color: appTheme.cardShadow,
+            blurRadius: 4.0,
+            offset: Offset(0, 2.0),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -40,23 +54,23 @@ class DrawerTile extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: iconBackgroundColor ?? (isSelected ? colors.primaryBlue : colors.surface),
+            color: iconBackgroundColor ?? (isSelected ? theme.primaryColor : appTheme.surface),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? colors.primaryBlue : colors.divider,
+              color: isSelected ? theme.primaryColor : appTheme.divider,
               width: 2,
             ),
           ),
           child: Icon(
             icon,
-            color: iconColor ?? (isSelected ? colors.appBarIcon : colors.primaryIcon),
+            color: iconColor ?? (isSelected ? appTheme.buttonTextOnColored : appTheme.primaryIcon),
             size: 24,
           ),
         ),
         title: Text(
           title,
           style: TextStyle(
-            color: colors.primaryText,
+            color: appTheme.primaryText, // Use primary text color (adapts to theme)
             fontSize: 18,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
@@ -65,7 +79,7 @@ class DrawerTile extends StatelessWidget {
             ? Text(
                 subtitle!,
                 style: TextStyle(
-                  color: colors.secondaryText,
+                  color: appTheme.secondaryText, // Use secondary text color (adapts to theme)
                   fontSize: 14,
                 ),
               )
@@ -73,12 +87,12 @@ class DrawerTile extends StatelessWidget {
         trailing: trailing ?? (isSelected
             ? Icon(
                 Icons.check_circle,
-                color: colors.primaryBlue,
+                color: theme.primaryColor,
                 size: 20,
               )
             : Icon(
                 Icons.arrow_forward_ios,
-                color: colors.secondaryIcon,
+                color: appTheme.secondaryIcon,
                 size: 16,
               )),
         onTap: onTap,

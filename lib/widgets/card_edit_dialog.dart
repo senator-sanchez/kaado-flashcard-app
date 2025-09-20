@@ -8,13 +8,14 @@ import '../models/flashcard.dart';
 import '../services/database_service.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 /// Dialog for adding and editing flashcards
 /// 
@@ -109,21 +110,23 @@ class _CardEditDialogState extends State<CardEditDialog> {
       }
 
       if (mounted) {
+        final theme = Theme.of(context);
         Navigator.of(context).pop();
         widget.onCardSaved();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.card != null ? 'Card updated successfully' : 'Card added successfully'),
-            backgroundColor: AppColors.success,
+            backgroundColor: theme.primaryColor,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving card: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -136,15 +139,16 @@ class _CardEditDialogState extends State<CardEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final isEditing = widget.card != null;
 
     return AlertDialog(
-      backgroundColor: colors.surface,
+      backgroundColor: appTheme.surface,
       title: Text(
         isEditing ? 'Edit Card' : 'Add Card',
         style: TextStyle(
-          color: colors.primaryText,
+          color: appTheme.primaryText,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -164,9 +168,9 @@ class _CardEditDialogState extends State<CardEditDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
-                style: TextStyle(color: colors.primaryText),
+                style: TextStyle(color: appTheme.primaryText),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Kana is required';
@@ -187,9 +191,9 @@ class _CardEditDialogState extends State<CardEditDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
-                style: TextStyle(color: colors.primaryText),
+                style: TextStyle(color: appTheme.primaryText),
               ),
 
               SizedBox(height: AppSizes.spacingMedium),
@@ -204,9 +208,9 @@ class _CardEditDialogState extends State<CardEditDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
-                style: TextStyle(color: colors.primaryText),
+                style: TextStyle(color: appTheme.primaryText),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'English translation is required';
@@ -227,9 +231,9 @@ class _CardEditDialogState extends State<CardEditDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
-                style: TextStyle(color: colors.primaryText),
+                style: TextStyle(color: appTheme.primaryText),
               ),
 
               SizedBox(height: AppSizes.spacingMedium),
@@ -244,9 +248,9 @@ class _CardEditDialogState extends State<CardEditDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
-                style: TextStyle(color: colors.primaryText),
+                style: TextStyle(color: appTheme.primaryText),
                 maxLines: 3,
                 minLines: 1,
               ),
@@ -259,14 +263,14 @@ class _CardEditDialogState extends State<CardEditDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: Text(
             'Cancel',
-            style: TextStyle(color: colors.secondaryText),
+            style: TextStyle(color: appTheme.secondaryText),
           ),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _saveCard,
           style: ElevatedButton.styleFrom(
-            backgroundColor: colors.primaryBlue,
-            foregroundColor: colors.buttonTextOnColored,
+            backgroundColor: theme.primaryColor,
+            foregroundColor: appTheme.buttonTextOnColored,
           ),
           child: _isLoading
               ? SizedBox(
@@ -274,7 +278,7 @@ class _CardEditDialogState extends State<CardEditDialog> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(colors.buttonTextOnColored),
+                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.buttonTextOnColored),
                   ),
                 )
               : Text(isEditing ? 'Update' : 'Add'),

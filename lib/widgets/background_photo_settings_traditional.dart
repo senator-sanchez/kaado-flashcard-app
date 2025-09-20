@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/background_photo_service.dart';
 import '../services/theme_service.dart';
-import '../utils/theme_colors.dart';
-import '../constants/app_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 import 'background_selector_dialog.dart';
 
 /// Widget for managing background photo settings (Traditional State Management)
@@ -53,7 +54,8 @@ class _BackgroundPhotoSettingsTraditionalState
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final hasBackgroundPhoto = _backgroundPhotoService.hasBackgroundPhoto;
 
     return Column(
@@ -65,26 +67,26 @@ class _BackgroundPhotoSettingsTraditionalState
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: colors.surface,
+              color: appTheme.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colors.divider, width: 2),
+              border: Border.all(color: appTheme.divider, width: 2),
             ),
             child: Icon(
               Icons.photo_library,
-              color: colors.primaryIcon,
+              color: appTheme.primaryIcon,
               size: 20,
             ),
           ),
           title: Text(
             'Background Photo',
             style: TextStyle(
-              color: colors.primaryText,
+              color: appTheme.primaryText,
               fontWeight: FontWeight.w500,
             ),
           ),
           subtitle: Text(
             'Customize your app background with a personal photo',
-            style: TextStyle(color: colors.secondaryText, fontSize: 12),
+            style: TextStyle(color: appTheme.secondaryText, fontSize: 12),
           ),
         ),
 
@@ -99,17 +101,17 @@ class _BackgroundPhotoSettingsTraditionalState
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: colors.primaryBlue.withValues(alpha: 0.1),
+                    color: appTheme.primaryBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: colors.primaryBlue.withValues(alpha: 0.3),
+                      color: appTheme.primaryBlue.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.check_circle,
-                        color: colors.primaryBlue,
+                        color: appTheme.primaryBlue,
                         size: 16,
                       ),
                       const SizedBox(width: 8),
@@ -117,7 +119,7 @@ class _BackgroundPhotoSettingsTraditionalState
                         child: Text(
                           'Custom background photo is set',
                           style: TextStyle(
-                            color: colors.primaryBlue,
+                            color: appTheme.primaryBlue,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -133,26 +135,27 @@ class _BackgroundPhotoSettingsTraditionalState
               if (_backgroundPhotoService.defaultBackgrounds.isNotEmpty) ...[
                 Row(
                   children: [
-                    Text(
-                      'Default Backgrounds',
-                      style: TextStyle(
-                        color: colors.primaryText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        'Default Backgrounds',
+                        style: TextStyle(
+                          color: appTheme.primaryText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     TextButton.icon(
                       onPressed: _isLoading ? null : _showBackgroundSelector,
                       icon: Icon(
                         Icons.grid_view,
                         size: 16,
-                        color: colors.primaryBlue,
+                        color: appTheme.primaryBlue,
                       ),
                       label: Text(
                         'Browse All',
                         style: TextStyle(
-                          color: colors.primaryBlue,
+                          color: appTheme.primaryBlue,
                           fontSize: 12,
                         ),
                       ),
@@ -166,7 +169,7 @@ class _BackgroundPhotoSettingsTraditionalState
               Text(
                 'Custom Backgrounds',
                 style: TextStyle(
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -181,7 +184,6 @@ class _BackgroundPhotoSettingsTraditionalState
                     icon: Icons.photo_library,
                     label: 'Gallery',
                     onPressed: _isLoading ? null : () => _pickFromGallery(),
-                    colors: colors,
                   ),
                   if (hasBackgroundPhoto)
                     _buildActionButton(
@@ -189,7 +191,6 @@ class _BackgroundPhotoSettingsTraditionalState
                       icon: Icons.delete,
                       label: 'Remove',
                       onPressed: _isLoading ? null : () => _removePhoto(),
-                      colors: colors,
                       isDestructive: true,
                     ),
                 ],
@@ -206,16 +207,18 @@ class _BackgroundPhotoSettingsTraditionalState
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          colors.primaryBlue,
+                          appTheme.primaryBlue,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      'Processing...',
-                      style: TextStyle(
-                        color: colors.secondaryText,
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        'Processing...',
+                        style: TextStyle(
+                          color: appTheme.secondaryText,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -233,14 +236,15 @@ class _BackgroundPhotoSettingsTraditionalState
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
-    required ThemeColors colors,
     bool isDestructive = false,
   }) {
-    final buttonColor = isDestructive ? colors.error : colors.primaryBlue;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
+    final buttonColor = isDestructive ? theme.colorScheme.error : theme.primaryColor;
     // Use white text for colored buttons, regular button text for others
     final textColor = isDestructive
-        ? colors.buttonTextOnColored
-        : colors.buttonTextOnColored;
+        ? appTheme.buttonTextOnColored
+        : appTheme.buttonTextOnColored;
 
     return ElevatedButton.icon(
       onPressed: onPressed,
@@ -283,7 +287,7 @@ class _BackgroundPhotoSettingsTraditionalState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppColors.error,
+        backgroundColor: Theme.of(context).colorScheme.error,
         duration: const Duration(seconds: 2),
       ),
     );

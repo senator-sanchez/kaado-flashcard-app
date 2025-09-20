@@ -8,14 +8,14 @@ import '../models/category.dart';
 import '../services/database_service.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
+import '../constants/app_colors.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 // Project imports - Screens
 import 'category_detail_screen.dart';
@@ -66,7 +66,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading categories: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -188,10 +188,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: appTheme.backgroundColor,
       drawer: KaadoNavigationDrawer(
         databaseService: _databaseService,
         onCategorySelected: (categoryId) {
@@ -214,19 +215,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
         },
       ),
       appBar: AppBar(
-        backgroundColor: colors.appBarBackground,
-        foregroundColor: colors.appBarIcon,
+        backgroundColor: appTheme.appBarBackground,
+        foregroundColor: appTheme.appBarIcon,
         elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: colors.appBarIcon),
+            icon: Icon(Icons.menu, color: appTheme.appBarIcon),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
         title: Text(
           'Library',
           style: TextStyle(
-            color: colors.appBarIcon,
+            color: appTheme.appBarIcon,
             fontSize: AppConstants.englishTextSize,
             fontWeight: FontWeight.w600,
           ),
@@ -234,7 +235,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.add, color: colors.appBarIcon),
+            icon: Icon(Icons.add, color: appTheme.appBarIcon),
             onPressed: _showAddCategoryDialog,
             tooltip: 'Add Category',
           ),
@@ -253,11 +254,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
               },
               decoration: InputDecoration(
                 hintText: 'Search categories...',
-                hintStyle: TextStyle(color: colors.secondaryText),
-                prefixIcon: Icon(Icons.search, color: colors.primaryIcon),
+                hintStyle: TextStyle(color: appTheme.secondaryText),
+                prefixIcon: Icon(Icons.search, color: theme.primaryColor),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.clear, color: colors.primaryIcon),
+                        icon: Icon(Icons.clear, color: theme.primaryColor),
                         onPressed: () {
                           setState(() {
                             _searchQuery = '';
@@ -266,31 +267,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: colors.surface,
+                fillColor: appTheme.surface,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                  borderSide: BorderSide(color: colors.divider),
+                  borderSide: BorderSide(color: appTheme.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                  borderSide: BorderSide(color: colors.divider),
+                  borderSide: BorderSide(color: appTheme.divider),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                  borderSide: BorderSide(color: colors.primaryBlue, width: 2),
+                  borderSide: BorderSide(color: theme.primaryColor, width: 2),
                 ),
               ),
-              style: TextStyle(color: colors.primaryText),
+              style: TextStyle(color: appTheme.primaryText),
             ),
           ),
 
           // Content
           Expanded(
             child: _isLoading
-                ? _buildLoadingState(colors)
+                ? _buildLoadingState()
                 : _filteredCategories.isEmpty
-                    ? _buildEmptyState(colors)
-                    : _buildCategoriesList(colors),
+                    ? _buildEmptyState()
+                    : _buildCategoriesList(),
           ),
         ],
       ),
@@ -298,19 +299,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Build loading state
-  Widget _buildLoadingState(ThemeColors colors) {
+  Widget _buildLoadingState() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: colors.primaryBlue,
+            color: theme.primaryColor,
           ),
           SizedBox(height: AppSizes.spacingMedium),
           Text(
             'Loading categories...',
             style: TextStyle(
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
               fontSize: 16,
             ),
           ),
@@ -320,7 +323,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Build empty state
-  Widget _buildEmptyState(ThemeColors colors) {
+  Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -328,13 +333,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
           Icon(
             Icons.library_books_outlined,
             size: 64,
-            color: colors.secondaryText,
+            color: appTheme.secondaryText,
           ),
           SizedBox(height: AppSizes.spacingMedium),
           Text(
             _searchQuery.isEmpty ? 'No categories found' : 'No matching categories',
             style: TextStyle(
-              color: colors.primaryText,
+              color: appTheme.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
@@ -345,7 +350,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ? 'Add your first category to get started'
                 : 'Try a different search term',
             style: TextStyle(
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
               fontSize: 14,
             ),
           ),
@@ -356,8 +361,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               icon: Icon(Icons.add),
               label: Text('Add Category'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primaryBlue,
-                foregroundColor: colors.buttonTextOnColored,
+                backgroundColor: theme.primaryColor,
+                foregroundColor: appTheme.buttonTextOnColored,
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSizes.spacingLarge,
                   vertical: AppSizes.spacingMedium,
@@ -371,10 +376,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Build categories list
-  Widget _buildCategoriesList(ThemeColors colors) {
+  Widget _buildCategoriesList() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return RefreshIndicator(
       onRefresh: _loadCategories,
-      color: colors.primaryBlue,
+      color: theme.primaryColor,
       child: CategoryTreeView(
         categories: _getFilteredCategories(),
         onCategoryTap: _navigateToCategory,
@@ -401,25 +408,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _showDeleteCategoryDialog(Category category) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: ThemeColors.instance.surface,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final appTheme = context.appTheme;
+        return AlertDialog(
+        backgroundColor: appTheme.surface,
         title: Text(
           'Delete Category',
           style: TextStyle(
-            color: ThemeColors.instance.primaryText,
+            color: appTheme.primaryText,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'Are you sure you want to delete "${category.name}"? This will also delete all cards in this category.',
-          style: TextStyle(color: ThemeColors.instance.primaryText),
+          style: TextStyle(color: appTheme.primaryText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancel',
-              style: TextStyle(color: ThemeColors.instance.secondaryText),
+              style: TextStyle(color: appTheme.secondaryText),
             ),
           ),
           TextButton(
@@ -441,7 +451,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error deleting category: $e'),
-                      backgroundColor: AppColors.error,
+                      backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
                 }
@@ -449,11 +459,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
             },
             child: Text(
               'Delete',
-              style: TextStyle(color: AppColors.error),
+              style: TextStyle(color: theme.colorScheme.error),
             ),
           ),
         ],
-      ),
+      );
+      },
     );
   }
 }

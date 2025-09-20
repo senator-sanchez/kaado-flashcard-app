@@ -46,6 +46,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         children: _screens,
       ),
       bottomNavigationBar: Container(
+        height: 80,
         decoration: BoxDecoration(
           color: appTheme.appBarBackground,
           boxShadow: [
@@ -56,38 +57,71 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
           ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          backgroundColor: Colors.transparent,
-          selectedItemColor: theme.primaryColor,
-          unselectedItemColor: appTheme.secondaryText,
-          selectedLabelStyle: TextStyle(
-            fontSize: AppSizes.fontSmall,
-            fontWeight: FontWeight.w600,
-            color: theme.primaryColor,
-          ),
-          unselectedLabelStyle: TextStyle(
-            fontSize: AppSizes.fontSmall,
-            fontWeight: FontWeight.w400,
-            color: appTheme.secondaryText,
-          ),
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined, color: appTheme.secondaryText),
-              activeIcon: Icon(Icons.home, color: theme.primaryColor),
-              label: AppStrings.home,
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 0;
+                  });
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                      color: _currentIndex == 0 
+                          ? appTheme.appBarIcon 
+                          : appTheme.appBarIcon.withValues(alpha: 0.7),
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppStrings.home,
+                      style: TextStyle(
+                        fontSize: AppSizes.fontSmall,
+                        fontWeight: _currentIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                        color: _currentIndex == 0 
+                            ? appTheme.appBarIcon 
+                            : appTheme.appBarIcon.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.library_books_outlined, color: appTheme.secondaryText),
-              activeIcon: Icon(Icons.library_books, color: theme.primaryColor),
-              label: AppStrings.library,
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 1;
+                  });
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _currentIndex == 1 ? Icons.library_books : Icons.library_books_outlined,
+                      color: _currentIndex == 1 
+                          ? appTheme.appBarIcon 
+                          : appTheme.appBarIcon.withValues(alpha: 0.7),
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppStrings.library,
+                      style: TextStyle(
+                        fontSize: AppSizes.fontSmall,
+                        fontWeight: _currentIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                        color: _currentIndex == 1 
+                            ? appTheme.appBarIcon 
+                            : appTheme.appBarIcon.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

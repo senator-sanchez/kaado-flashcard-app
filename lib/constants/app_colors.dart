@@ -47,4 +47,10 @@ class AppColors {
   // Divider colors
   static const Color dividerLight = Color(0xFFE0E0E0);
   static const Color dividerDark = Color(0xFF424242);
+  
+  // Additional properties for compatibility
+  static const Color cardBackground = surfaceLight; // Default to light surface
+  static const Color cardShadow = shadowLight;
+  static const Color surface = surfaceLight; // Default to light surface
+  static const Color divider = dividerLight; // Default to light divider
 }

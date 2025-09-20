@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import '../models/flashcard.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 /// A card item widget for displaying flashcard information
 /// 
@@ -33,7 +34,8 @@ class CardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return Card(
       margin: EdgeInsets.only(bottom: AppSizes.spacingMedium),
@@ -56,7 +58,7 @@ class CardItem extends StatelessWidget {
                     child: Text(
                       'Card #${card.id}',
                       style: TextStyle(
-                        color: colors.secondaryText,
+                        color: appTheme.secondaryText,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -78,7 +80,7 @@ class CardItem extends StatelessWidget {
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit, size: 20, color: colors.primaryIcon),
+                            Icon(Icons.edit, size: 20, color: appTheme.primaryIcon),
                             SizedBox(width: 8),
                             Text('Edit'),
                           ],
@@ -88,7 +90,7 @@ class CardItem extends StatelessWidget {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete, size: 20, color: AppColors.error),
+                            Icon(Icons.delete, size: 20, color: theme.colorScheme.error),
                             SizedBox(width: 8),
                             Text('Delete'),
                           ],
@@ -97,7 +99,7 @@ class CardItem extends StatelessWidget {
                     ],
                     child: Icon(
                       Icons.more_vert,
-                      color: colors.primaryIcon,
+                      color: appTheme.primaryIcon,
                     ),
                   ),
                 ],
@@ -106,12 +108,12 @@ class CardItem extends StatelessWidget {
               SizedBox(height: AppSizes.spacingMedium),
 
               // Card content
-              _buildFieldRow('Kana', card.kana, colors.primaryText),
+              _buildFieldRow('Kana', card.kana, appTheme.primaryText, appTheme.secondaryText),
               if (card.hiragana?.isNotEmpty == true)
-                _buildFieldRow('Hiragana', card.hiragana!, colors.secondaryText),
-              _buildFieldRow('English', card.english, colors.primaryText),
+                _buildFieldRow('Hiragana', card.hiragana!, appTheme.secondaryText, appTheme.secondaryText),
+              _buildFieldRow('English', card.english, appTheme.primaryText, appTheme.secondaryText),
               if (card.romaji?.isNotEmpty == true)
-                _buildFieldRow('Romaji', card.romaji!, colors.secondaryText),
+                _buildFieldRow('Romaji', card.romaji!, appTheme.secondaryText, appTheme.secondaryText),
             ],
           ),
         ),
@@ -120,7 +122,7 @@ class CardItem extends StatelessWidget {
   }
 
   /// Build a field row with label and value
-  Widget _buildFieldRow(String label, String value, Color textColor) {
+  Widget _buildFieldRow(String label, String value, Color textColor, Color labelColor) {
     return Padding(
       padding: EdgeInsets.only(bottom: AppSizes.spacingSmall),
       child: Row(
@@ -131,7 +133,7 @@ class CardItem extends StatelessWidget {
             child: Text(
               '$label:',
               style: TextStyle(
-                color: ThemeColors.instance.secondaryText,
+                color: labelColor,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),

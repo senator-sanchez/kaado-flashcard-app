@@ -17,6 +17,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.primaryText,
     required this.secondaryText,
     required this.surface,
+    required this.primaryBlue,
+    required this.primaryIcon,
+    required this.secondaryIcon,
+    required this.topTextBackgroundColor,
+    required this.cardShadow,
   });
 
   final Color cardBackground;
@@ -33,6 +38,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color primaryText;
   final Color secondaryText;
   final Color surface;
+  final Color primaryBlue;
+  final Color primaryIcon;
+  final Color secondaryIcon;
+  final Color topTextBackgroundColor;
+  final Color cardShadow;
 
   @override
   AppThemeExtension copyWith({
@@ -50,6 +60,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? primaryText,
     Color? secondaryText,
     Color? surface,
+    Color? primaryBlue,
+    Color? primaryIcon,
+    Color? secondaryIcon,
+    Color? topTextBackgroundColor,
+    Color? cardShadow,
   }) {
     return AppThemeExtension(
       cardBackground: cardBackground ?? this.cardBackground,
@@ -66,6 +81,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       primaryText: primaryText ?? this.primaryText,
       secondaryText: secondaryText ?? this.secondaryText,
       surface: surface ?? this.surface,
+      primaryBlue: primaryBlue ?? this.primaryBlue,
+      primaryIcon: primaryIcon ?? this.primaryIcon,
+      secondaryIcon: secondaryIcon ?? this.secondaryIcon,
+      topTextBackgroundColor: topTextBackgroundColor ?? this.topTextBackgroundColor,
+      cardShadow: cardShadow ?? this.cardShadow,
     );
   }
 
@@ -89,6 +109,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       primaryText: Color.lerp(primaryText, other.primaryText, t)!,
       secondaryText: Color.lerp(secondaryText, other.secondaryText, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
+      primaryBlue: Color.lerp(primaryBlue, other.primaryBlue, t)!,
+      primaryIcon: Color.lerp(primaryIcon, other.primaryIcon, t)!,
+      secondaryIcon: Color.lerp(secondaryIcon, other.secondaryIcon, t)!,
+      topTextBackgroundColor: Color.lerp(topTextBackgroundColor, other.topTextBackgroundColor, t)!,
+      cardShadow: Color.lerp(cardShadow, other.cardShadow, t)!,
     );
   }
 }
@@ -125,7 +150,12 @@ class AppTheme {
       primaryText: Colors.black87,
       secondaryText: Colors.black54,
       surface: Color(0xFFFFFFFF),
-    );
+        primaryBlue: _primaryBlue,
+        primaryIcon: _primaryBlue,
+        secondaryIcon: Color(0xFF757575),
+        topTextBackgroundColor: Color(0xFFE0E0E0),
+        cardShadow: Color(0x1A000000),
+      );
 
     return ThemeData(
       useMaterial3: true,
@@ -216,7 +246,12 @@ class AppTheme {
       primaryText: Colors.white,
       secondaryText: Color(0xFFB0B0B0),
       surface: Color(0xFF2D2D2D),
-    );
+        primaryBlue: Color(0xFF64B5F6),
+        primaryIcon: Color(0xFF64B5F6),
+        secondaryIcon: Color(0xFFB0B0B0),
+        topTextBackgroundColor: Color(0xFF424242),
+        cardShadow: Color(0x33000000),
+      );
 
     return ThemeData(
       useMaterial3: true,

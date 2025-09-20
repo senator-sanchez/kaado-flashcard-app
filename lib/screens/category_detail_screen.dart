@@ -9,14 +9,15 @@ import '../models/flashcard.dart';
 import '../services/database_service.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 // Project imports - Widgets
 import '../widgets/card_item.dart';
@@ -66,10 +67,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading cards: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -119,25 +121,28 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   void _showDeleteCardDialog(Flashcard card) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: ThemeColors.instance.surface,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final appTheme = context.appTheme;
+        return AlertDialog(
+        backgroundColor: appTheme.surface,
         title: Text(
           'Delete Card',
           style: TextStyle(
-            color: ThemeColors.instance.primaryText,
+            color: appTheme.primaryText,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'Are you sure you want to delete this card?',
-          style: TextStyle(color: ThemeColors.instance.primaryText),
+          style: TextStyle(color: appTheme.primaryText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'Cancel',
-              style: TextStyle(color: ThemeColors.instance.secondaryText),
+              style: TextStyle(color: appTheme.secondaryText),
             ),
           ),
           TextButton(
@@ -150,7 +155,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Card deleted successfully'),
-                      backgroundColor: AppColors.success,
+                      backgroundColor: theme.primaryColor,
                     ),
                   );
                 }
@@ -159,7 +164,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error deleting card: $e'),
-                      backgroundColor: AppColors.error,
+                      backgroundColor: theme.colorScheme.error,
                     ),
                   );
                 }
@@ -167,28 +172,30 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             },
             child: Text(
               'Delete',
-              style: TextStyle(color: AppColors.error),
+              style: TextStyle(color: theme.colorScheme.error),
             ),
           ),
         ],
-      ),
+      );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: appTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: colors.appBarBackground,
-        foregroundColor: colors.appBarIcon,
+        backgroundColor: appTheme.appBarBackground,
+        foregroundColor: appTheme.appBarIcon,
         elevation: 0,
         title: Text(
           widget.category.name,
           style: TextStyle(
-            color: colors.appBarIcon,
+            color: appTheme.appBarIcon,
             fontSize: AppConstants.englishTextSize,
             fontWeight: FontWeight.w600,
           ),
@@ -196,7 +203,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.add, color: colors.appBarIcon),
+            icon: Icon(Icons.add, color: appTheme.appBarIcon),
             onPressed: _showAddCardDialog,
             tooltip: 'Add Card',
           ),
@@ -215,7 +222,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   Text(
                     widget.category.description!,
                     style: TextStyle(
-                      color: colors.secondaryText,
+                      color: appTheme.secondaryText,
                       fontSize: 14,
                     ),
                   ),
@@ -226,7 +233,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 Text(
                   '${_cards.length} cards',
                   style: TextStyle(
-                    color: colors.primaryText,
+                    color: appTheme.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -243,11 +250,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   },
                   decoration: InputDecoration(
                     hintText: 'Search cards...',
-                    hintStyle: TextStyle(color: colors.secondaryText),
-                    prefixIcon: Icon(Icons.search, color: colors.primaryIcon),
+                    hintStyle: TextStyle(color: appTheme.secondaryText),
+                    prefixIcon: Icon(Icons.search, color: theme.primaryColor),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear, color: colors.primaryIcon),
+                            icon: Icon(Icons.clear, color: theme.primaryColor),
                             onPressed: () {
                               setState(() {
                                 _searchQuery = '';
@@ -256,21 +263,21 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                           )
                         : null,
                     filled: true,
-                    fillColor: colors.surface,
+                    fillColor: appTheme.surface,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                      borderSide: BorderSide(color: colors.divider),
+                      borderSide: BorderSide(color: appTheme.divider),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                      borderSide: BorderSide(color: colors.divider),
+                      borderSide: BorderSide(color: appTheme.divider),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                      borderSide: BorderSide(color: colors.primaryBlue, width: 2),
+                      borderSide: BorderSide(color: theme.primaryColor, width: 2),
                     ),
                   ),
-                  style: TextStyle(color: colors.primaryText),
+                  style: TextStyle(color: appTheme.primaryText),
                 ),
               ],
             ),
@@ -279,10 +286,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           // Cards list
           Expanded(
             child: _isLoading
-                ? _buildLoadingState(colors)
+                ? _buildLoadingState()
                 : _filteredCards.isEmpty
-                    ? _buildEmptyState(colors)
-                    : _buildCardsList(colors),
+                    ? _buildEmptyState()
+                    : _buildCardsList(),
           ),
         ],
       ),
@@ -290,19 +297,21 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   }
 
   /// Build loading state
-  Widget _buildLoadingState(ThemeColors colors) {
+  Widget _buildLoadingState() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: colors.primaryBlue,
+            color: theme.primaryColor,
           ),
           SizedBox(height: AppSizes.spacingMedium),
           Text(
             'Loading cards...',
             style: TextStyle(
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
               fontSize: 16,
             ),
           ),
@@ -312,7 +321,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   }
 
   /// Build empty state
-  Widget _buildEmptyState(ThemeColors colors) {
+  Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -320,13 +331,13 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           Icon(
             Icons.style_outlined,
             size: 64,
-            color: colors.secondaryText,
+            color: appTheme.secondaryText,
           ),
           SizedBox(height: AppSizes.spacingMedium),
           Text(
             _searchQuery.isEmpty ? 'No cards in this category' : 'No matching cards',
             style: TextStyle(
-              color: colors.primaryText,
+              color: appTheme.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
@@ -337,7 +348,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 ? 'Add your first card to get started'
                 : 'Try a different search term',
             style: TextStyle(
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
               fontSize: 14,
             ),
           ),
@@ -348,8 +359,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               icon: Icon(Icons.add),
               label: Text('Add Card'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: colors.primaryBlue,
-                foregroundColor: colors.buttonTextOnColored,
+                backgroundColor: theme.primaryColor,
+                foregroundColor: appTheme.buttonTextOnColored,
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSizes.spacingLarge,
                   vertical: AppSizes.spacingMedium,
@@ -363,10 +374,12 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   }
 
   /// Build cards list
-  Widget _buildCardsList(ThemeColors colors) {
+  Widget _buildCardsList() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return RefreshIndicator(
       onRefresh: _loadCards,
-      color: colors.primaryBlue,
+      color: theme.primaryColor,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: AppConstants.cardPadding),
         itemCount: _filteredCards.length,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/background_photo_service.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 
 /// Dialog for selecting background images from assets/backgrounds/
@@ -23,11 +25,12 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final defaultBackgrounds = _backgroundPhotoService.defaultBackgrounds;
 
     return Dialog(
-      backgroundColor: colors.surface,
+      backgroundColor: appTheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -45,12 +48,12 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                   onPressed: () => Navigator.of(context).pop(),
                   icon: Icon(
                     Icons.close,
-                    color: colors.primaryIcon,
+                    color: appTheme.primaryIcon,
                   ),
                 ),
                 Icon(
                   Icons.image,
-                  color: colors.primaryIcon,
+                  color: appTheme.primaryIcon,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
@@ -58,7 +61,7 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                   child: Text(
                     'Select Background',
                     style: TextStyle(
-                      color: colors.primaryText,
+                      color: appTheme.primaryText,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -73,7 +76,7 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
             Text(
               '${defaultBackgrounds.length} backgrounds available',
               style: TextStyle(
-                color: colors.secondaryText,
+                color: appTheme.secondaryText,
                 fontSize: 14,
               ),
             ),
@@ -90,13 +93,13 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                           Icon(
                             Icons.image_not_supported,
                             size: 48,
-                            color: colors.secondaryIcon,
+                            color: appTheme.secondaryIcon,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No backgrounds found',
                             style: TextStyle(
-                              color: colors.secondaryText,
+                              color: appTheme.secondaryText,
                               fontSize: 16,
                             ),
                           ),
@@ -104,7 +107,7 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                           Text(
                             'Add images to ${AppConstants.backgroundsPath} folder',
                             style: TextStyle(
-                              color: colors.secondaryText,
+                              color: appTheme.secondaryText,
                               fontSize: 12,
                             ),
                           ),
@@ -126,7 +129,7 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                         return _buildThumbnailTile(
                           assetPath: assetPath,
                           isSelected: isSelected,
-                          colors: colors,
+                          context: context,
                         );
                       },
                     ),
@@ -141,8 +144,8 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.primaryText,
-                      side: BorderSide(color: colors.divider),
+                      foregroundColor: appTheme.primaryText,
+                      side: BorderSide(color: appTheme.divider),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: const Text('Cancel'),
@@ -155,8 +158,8 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                         ? () => _applyBackground()
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primaryBlue,
-                      foregroundColor: colors.buttonTextOnColored,
+                      backgroundColor: appTheme.primaryBlue,
+                      foregroundColor: appTheme.buttonTextOnColored,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: const Text('Apply'),
@@ -173,8 +176,10 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
   Widget _buildThumbnailTile({
     required String assetPath,
     required bool isSelected,
-    required ThemeColors colors,
+    required BuildContext context,
   }) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final fileName = assetPath.split('/').last.split('.').first;
     final displayName = fileName.replaceAll('_', ' ').toUpperCase();
     
@@ -188,12 +193,12 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? colors.primaryBlue : colors.divider,
+            color: isSelected ? appTheme.primaryBlue : appTheme.divider,
             width: isSelected ? 3 : 1,
           ),
           color: isSelected 
-              ? colors.primaryBlue.withValues(alpha: 0.1)
-              : colors.surface,
+              ? appTheme.primaryBlue.withValues(alpha: 0.1)
+              : appTheme.surface,
         ),
         child: Column(
           children: [
@@ -217,12 +222,12 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(11),
                           ),
-                          color: colors.primaryBlue.withValues(alpha: 0.3),
+                          color: appTheme.primaryBlue.withValues(alpha: 0.3),
                         ),
                         child: Center(
                           child: Icon(
                             Icons.check_circle,
-                            color: colors.buttonTextOnColored,
+                            color: appTheme.buttonTextOnColored,
                             size: 32,
                           ),
                         ),
@@ -242,14 +247,14 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
                     bottom: Radius.circular(11),
                   ),
                   color: isSelected 
-                      ? colors.primaryBlue.withValues(alpha: 0.1)
-                      : colors.surface,
+                      ? appTheme.primaryBlue.withValues(alpha: 0.1)
+                      : appTheme.surface,
                 ),
                 child: Center(
                   child: Text(
                     displayName,
                     style: TextStyle(
-                      color: isSelected ? colors.primaryBlue : colors.primaryText,
+                      color: isSelected ? appTheme.primaryBlue : appTheme.primaryText,
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),

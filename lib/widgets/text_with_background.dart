@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 import '../services/background_photo_service.dart';
 
@@ -51,7 +53,8 @@ class _TextWithBackgroundState extends State<TextWithBackground> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final hasBackgroundImage = _backgroundPhotoService.hasBackgroundPhoto;
 
     if (!hasBackgroundImage) {
@@ -67,8 +70,8 @@ class _TextWithBackgroundState extends State<TextWithBackground> {
 
     // Background image is active, wrap text with appropriate background
     final backgroundColor = widget.isTopText
-        ? colors.topTextBackgroundColor // Light grey for top text
-        : colors.cardBackground; // Theme-aware background for swipe hints
+        ? appTheme.topTextBackgroundColor // Light grey for top text
+        : appTheme.cardBackground; // Theme-aware background for swipe hints
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -133,7 +136,8 @@ class _WidgetWithBackgroundState extends State<WidgetWithBackground> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final hasBackgroundImage = _backgroundPhotoService.hasBackgroundPhoto;
 
     if (!hasBackgroundImage) {
@@ -144,7 +148,7 @@ class _WidgetWithBackgroundState extends State<WidgetWithBackground> {
     // Background image is active, wrap child with contrasting background
     // For WidgetWithBackground, we'll use a default contrasting color
     // since we can't easily determine the child's text color
-    final backgroundColor = _getDefaultContrastingBackgroundColor(colors);
+    final backgroundColor = _getDefaultContrastingBackgroundColor();
 
     return Container(
       padding:
@@ -164,9 +168,9 @@ class _WidgetWithBackgroundState extends State<WidgetWithBackground> {
   }
 
   /// Get a default contrasting background color based on the theme
-  Color _getDefaultContrastingBackgroundColor(ThemeColors colors) {
+  Color _getDefaultContrastingBackgroundColor() {
+    final appTheme = context.appTheme;
     // Use the consolidated function for icon background colors
-    return colors.getIconBackgroundColor(hasBackgroundImage: true) ??
-        colors.cardBackground;
+    return appTheme.cardBackground.withValues(alpha: 0.9);
   }
 }

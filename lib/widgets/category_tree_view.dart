@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_colors.dart';
+import '../constants/app_strings.dart';
 
 /// A hierarchical tree view widget for displaying categories
 /// 
@@ -45,7 +45,8 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
 
   /// Build a category node with proper indentation and hierarchy
   Widget _buildCategoryNode(Category category, int depth) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final isExpanded = _expandedCategories.contains(category.id);
     final hasChildren = category.children != null && category.children!.isNotEmpty;
     final isLeafCategory = category.isCardCategory && category.cardCount > 0;
@@ -59,7 +60,7 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
             bottom: AppSizes.spacingSmall,
           ),
           child: Card(
-            color: colors.surface,
+            color: appTheme.surface,
             elevation: 1,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
@@ -83,8 +84,8 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
                         ? (isExpanded ? Icons.folder_open : Icons.folder)
                         : (isLeafCategory ? Icons.description : Icons.folder_outlined),
                       color: hasChildren 
-                        ? colors.primaryBlue
-                        : (isLeafCategory ? colors.primaryText : colors.secondaryText),
+                        ? theme.primaryColor
+                        : (isLeafCategory ? theme.primaryColor : appTheme.primaryText),
                       size: 20,
                     ),
                     SizedBox(width: AppSizes.spacingSmall),
@@ -97,7 +98,7 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
                           Text(
                             category.name,
                             style: TextStyle(
-                              color: colors.primaryText,
+                              color: appTheme.primaryText,
                               fontSize: 16,
                               fontWeight: hasChildren ? FontWeight.w600 : FontWeight.w500,
                             ),
@@ -110,7 +111,7 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
                               child: Text(
                                 category.description!,
                                 style: TextStyle(
-                                  color: colors.secondaryText,
+                                  color: appTheme.secondaryText,
                                   fontSize: 12,
                                 ),
                                 maxLines: 1,
@@ -121,36 +122,43 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
                       ),
                     ),
                     
-                    // Card count or expand icon
-                    if (isLeafCategory)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSizes.spacingSmall,
-                          vertical: AppSizes.spacingXSmall,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colors.primaryBlue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
-                        ),
-                        child: Text(
-                          '${category.cardCount}',
-                          style: TextStyle(
-                            color: colors.primaryBlue,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                    // Card count and expand icon
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (category.cardCount > 0) ...[
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSizes.spacingSmall,
+                              vertical: AppSizes.spacingXSmall,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.primaryColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                            ),
+                            child: Text(
+                              '${category.cardCount}',
+                              style: TextStyle(
+                                color: theme.primaryColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
-                      )
-                    else if (hasChildren)
-                      Icon(
-                        isExpanded ? Icons.expand_less : Icons.expand_more,
-                        color: colors.secondaryText,
-                        size: 20,
-                      ),
+                          if (hasChildren) SizedBox(width: AppSizes.spacingSmall),
+                        ],
+                        if (hasChildren)
+                          Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: theme.primaryColor,
+                            size: 20,
+                          ),
+                      ],
+                    ),
                     
                     // Menu button for actions
                     PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, color: colors.secondaryIcon, size: 16),
+                      icon: Icon(Icons.more_vert, color: appTheme.primaryText, size: 16),
                       onSelected: (value) {
                         if (value == 'edit') {
                           widget.onCategoryEdit(category);
@@ -161,11 +169,11 @@ class _CategoryTreeViewState extends State<CategoryTreeView> {
                       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                         PopupMenuItem<String>(
                           value: 'edit',
-                          child: Text('Edit', style: TextStyle(color: colors.primaryText)),
+                          child: Text('Edit', style: TextStyle(color: appTheme.primaryText)),
                         ),
                         PopupMenuItem<String>(
                           value: 'delete',
-                          child: Text('Delete', style: TextStyle(color: AppColors.error)),
+                          child: Text('Delete', style: TextStyle(color: theme.colorScheme.error)),
                         ),
                       ],
                     ),

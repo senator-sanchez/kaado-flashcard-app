@@ -10,17 +10,19 @@ import 'package:flutter/material.dart';
 import '../models/spaced_repetition_settings.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 
 class SpacedRepetitionSettingsScreen extends StatefulWidget {
-  final SpacedRepetitionSettings initialSettings;
-  final Function(SpacedRepetitionSettings) onSettingsChanged;
+  final SpacedRepetitionSettings? initialSettings;
+  final Function(SpacedRepetitionSettings)? onSettingsChanged;
 
   const SpacedRepetitionSettingsScreen({
     super.key,
-    required this.initialSettings,
-    required this.onSettingsChanged,
+    this.initialSettings,
+    this.onSettingsChanged,
   });
 
   @override
@@ -34,21 +36,22 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
   @override
   void initState() {
     super.initState();
-    _settings = widget.initialSettings;
+    _settings = widget.initialSettings ?? SpacedRepetitionSettings();
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: appTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: colors.appBarBackground,
-        foregroundColor: colors.appBarIcon,
+        backgroundColor: appTheme.appBarBackground,
+        foregroundColor: appTheme.appBarIcon,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: colors.appBarIcon),
+          icon: Icon(Icons.arrow_back, color: appTheme.appBarIcon),
           onPressed: () {
             // Check if there are unsaved changes
             if (_hasChanges) {
@@ -61,7 +64,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
         title: Text(
           'Spaced Repetition Settings',
           style: TextStyle(
-            color: colors.appBarIcon,
+            color: appTheme.appBarIcon,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -73,7 +76,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
               child: Text(
                 'Save',
                 style: TextStyle(
-                  color: colors.appBarIcon,
+                  color: appTheme.appBarIcon,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -86,32 +89,32 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Presets Section
-            _buildPresetsSection(colors),
+            _buildPresetsSection(),
             
             SizedBox(height: AppConstants.mediumSpacing),
             
             // Daily Limits Section
-            _buildDailyLimitsSection(colors),
+            _buildDailyLimitsSection(),
             
             SizedBox(height: AppConstants.mediumSpacing),
             
             // Interval Settings Section
-            _buildIntervalSettingsSection(colors),
+            _buildIntervalSettingsSection(),
             
             SizedBox(height: AppConstants.mediumSpacing),
             
             // Ease Factor Settings Section
-            _buildEaseFactorSection(colors),
+            _buildEaseFactorSection(),
             
             SizedBox(height: AppConstants.mediumSpacing),
             
             // Review Order Section
-            _buildReviewOrderSection(colors),
+            _buildReviewOrderSection(),
             
             SizedBox(height: AppConstants.mediumSpacing),
             
             // Advanced Settings Section
-            _buildAdvancedSettingsSection(colors),
+            _buildAdvancedSettingsSection(),
             
             SizedBox(height: AppConstants.largeSpacing),
           ],
@@ -120,26 +123,27 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     );
   }
 
-  Widget _buildPresetsSection(ThemeColors colors) {
+  Widget _buildPresetsSection() {
     return _buildSection(
       title: 'Learning Style Presets',
       subtitle: 'Choose a preset that matches your learning style',
-      colors: colors,
       child: Column(
         children: [
-          _buildPresetButton('Beginner', 'Slower pace, more repetition', SpacedRepetitionPresets.beginner, colors),
+          _buildPresetButton('Beginner', 'Slower pace, more repetition', SpacedRepetitionPresets.beginner),
           SizedBox(height: 8),
-          _buildPresetButton('Standard', 'Balanced learning pace', SpacedRepetitionPresets.standard, colors),
+          _buildPresetButton('Standard', 'Balanced learning pace', SpacedRepetitionPresets.standard),
           SizedBox(height: 8),
-          _buildPresetButton('Intensive', 'Fast pace, frequent reviews', SpacedRepetitionPresets.intensive, colors),
+          _buildPresetButton('Intensive', 'Fast pace, frequent reviews', SpacedRepetitionPresets.intensive),
           SizedBox(height: 8),
-          _buildPresetButton('Relaxed', 'Slower pace, longer intervals', SpacedRepetitionPresets.relaxed, colors),
+          _buildPresetButton('Relaxed', 'Slower pace, longer intervals', SpacedRepetitionPresets.relaxed),
         ],
       ),
     );
   }
 
-  Widget _buildPresetButton(String title, String subtitle, SpacedRepetitionSettings preset, ThemeColors colors) {
+  Widget _buildPresetButton(String title, String subtitle, SpacedRepetitionSettings preset) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final isSelected = _settings == preset;
     
     return InkWell(
@@ -148,10 +152,10 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
       child: Container(
         padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? colors.primaryBlue.withValues(alpha: 0.1) : colors.cardBackground,
+          color: isSelected ? theme.primaryColor.withValues(alpha: 0.1) : appTheme.cardBackground,
           borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
           border: Border.all(
-            color: isSelected ? colors.primaryBlue : colors.divider,
+            color: isSelected ? theme.primaryColor : appTheme.divider,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -159,7 +163,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: isSelected ? colors.primaryBlue : colors.secondaryIcon,
+              color: isSelected ? theme.primaryColor : appTheme.secondaryText,
               size: 20,
             ),
             SizedBox(width: 12),
@@ -172,14 +176,14 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: colors.primaryText,
+                      color: appTheme.primaryText,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: colors.secondaryText,
+                      color: appTheme.secondaryText,
                     ),
                   ),
                 ],
@@ -191,11 +195,10 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     );
   }
 
-  Widget _buildDailyLimitsSection(ThemeColors colors) {
+  Widget _buildDailyLimitsSection() {
     return _buildSection(
       title: 'Daily Limits',
       subtitle: 'Control how many cards you study each day',
-      colors: colors,
       child: Column(
         children: [
           _buildSliderSetting(
@@ -204,7 +207,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             0,
             100,
             (value) => _updateSetting((s) => s.copyWith(dailyNewCardsLimit: value.round())),
-            colors,
           ),
           SizedBox(height: 16),
           _buildSliderSetting(
@@ -213,7 +215,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             0,
             200,
             (value) => _updateSetting((s) => s.copyWith(dailyReviewLimit: value.round())),
-            colors,
             helpText: '0 = unlimited',
           ),
         ],
@@ -221,39 +222,37 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     );
   }
 
-  Widget _buildIntervalSettingsSection(ThemeColors colors) {
+  Widget _buildIntervalSettingsSection() {
     return _buildSection(
       title: 'Review Intervals',
       subtitle: 'How long to wait between reviews',
-      colors: colors,
       child: Column(
         children: [
           _buildIntervalSetting('New Cards', _settings.newCardInterval, (value) => 
-            _updateSetting((s) => s.copyWith(newCardInterval: value)), colors),
+            _updateSetting((s) => s.copyWith(newCardInterval: value))),
           _buildIntervalSetting('Learning 1', _settings.learningInterval1, (value) => 
-            _updateSetting((s) => s.copyWith(learningInterval1: value)), colors),
+            _updateSetting((s) => s.copyWith(learningInterval1: value))),
           _buildIntervalSetting('Learning 2', _settings.learningInterval2, (value) => 
-            _updateSetting((s) => s.copyWith(learningInterval2: value)), colors),
+            _updateSetting((s) => s.copyWith(learningInterval2: value))),
           _buildIntervalSetting('Learning 3', _settings.learningInterval3, (value) => 
-            _updateSetting((s) => s.copyWith(learningInterval3: value)), colors),
+            _updateSetting((s) => s.copyWith(learningInterval3: value))),
           _buildIntervalSetting('Learning 4', _settings.learningInterval4, (value) => 
-            _updateSetting((s) => s.copyWith(learningInterval4: value)), colors),
+            _updateSetting((s) => s.copyWith(learningInterval4: value))),
           _buildIntervalSetting('Learning 5', _settings.learningInterval5, (value) => 
-            _updateSetting((s) => s.copyWith(learningInterval5: value)), colors),
+            _updateSetting((s) => s.copyWith(learningInterval5: value))),
           _buildIntervalSetting('Learning 6', _settings.learningInterval6, (value) => 
-            _updateSetting((s) => s.copyWith(learningInterval6: value)), colors),
+            _updateSetting((s) => s.copyWith(learningInterval6: value))),
           _buildIntervalSetting('Maximum', _settings.maxInterval, (value) => 
-            _updateSetting((s) => s.copyWith(maxInterval: value)), colors),
+            _updateSetting((s) => s.copyWith(maxInterval: value))),
         ],
       ),
     );
   }
 
-  Widget _buildEaseFactorSection(ThemeColors colors) {
+  Widget _buildEaseFactorSection() {
     return _buildSection(
       title: 'Ease Factor',
       subtitle: 'How difficulty affects review intervals',
-      colors: colors,
       child: Column(
         children: [
           _buildSliderSetting(
@@ -262,7 +261,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             1.0,
             3.0,
             (value) => _updateSetting((s) => s.copyWith(defaultEaseFactor: value)),
-            colors,
             divisions: 20,
           ),
           SizedBox(height: 16),
@@ -272,7 +270,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             0.05,
             0.5,
             (value) => _updateSetting((s) => s.copyWith(easeFactorDecrease: value)),
-            colors,
             divisions: 45,
             helpText: 'How much to decrease on incorrect answers',
           ),
@@ -283,7 +280,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             0.05,
             0.5,
             (value) => _updateSetting((s) => s.copyWith(easeFactorIncrease: value)),
-            colors,
             divisions: 45,
             helpText: 'How much to increase on correct answers',
           ),
@@ -292,11 +288,10 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     );
   }
 
-  Widget _buildReviewOrderSection(ThemeColors colors) {
+  Widget _buildReviewOrderSection() {
     return _buildSection(
       title: 'Review Order',
       subtitle: 'How to organize new cards and reviews',
-      colors: colors,
       child: Column(
         children: ReviewOrder.values.map((order) {
           return RadioListTile<ReviewOrder>(
@@ -316,11 +311,12 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     );
   }
 
-  Widget _buildAdvancedSettingsSection(ThemeColors colors) {
+  Widget _buildAdvancedSettingsSection() {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return _buildSection(
       title: 'Advanced Settings',
       subtitle: 'Fine-tune the spaced repetition algorithm',
-      colors: colors,
       child: Column(
         children: [
           SwitchListTile(
@@ -328,7 +324,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             subtitle: Text('Use different intervals for learning stages'),
             value: _settings.enableGraduatedIntervals,
             onChanged: (value) => _updateSetting((s) => s.copyWith(enableGraduatedIntervals: value)),
-            activeThumbColor: colors.primaryBlue,
+            activeThumbColor: theme.primaryColor,
             contentPadding: EdgeInsets.zero,
           ),
           SwitchListTile(
@@ -336,7 +332,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             subtitle: Text('Allow ease factor to change based on performance'),
             value: _settings.enableEaseFactorAdjustment,
             onChanged: (value) => _updateSetting((s) => s.copyWith(enableEaseFactorAdjustment: value)),
-            activeThumbColor: colors.primaryBlue,
+            activeThumbColor: theme.primaryColor,
             contentPadding: EdgeInsets.zero,
           ),
           SwitchListTile(
@@ -344,7 +340,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             subtitle: Text('Interleave new cards with reviews'),
             value: _settings.mixNewAndReview,
             onChanged: (value) => _updateSetting((s) => s.copyWith(mixNewAndReview: value)),
-            activeThumbColor: colors.primaryBlue,
+            activeThumbColor: theme.primaryColor,
             contentPadding: EdgeInsets.zero,
           ),
         ],
@@ -356,14 +352,15 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     required String title,
     required String subtitle,
     required Widget child,
-    required ThemeColors colors,
   }) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Container(
       padding: EdgeInsets.all(AppConstants.cardPadding),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: appTheme.cardBackground,
         borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-        border: Border.all(color: colors.divider),
+        border: Border.all(color: appTheme.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,7 +370,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: colors.primaryText,
+              color: appTheme.primaryText,
             ),
           ),
           SizedBox(height: 4),
@@ -381,7 +378,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             subtitle,
             style: TextStyle(
               fontSize: 12,
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
             ),
           ),
           SizedBox(height: 16),
@@ -396,11 +393,12 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     double value,
     double min,
     double max,
-    Function(double) onChanged,
-    ThemeColors colors, {
+    Function(double) onChanged, {
     int? divisions,
     String? helpText,
   }) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -412,7 +410,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: colors.primaryText,
+                color: appTheme.primaryText,
               ),
             ),
             Text(
@@ -420,7 +418,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: colors.primaryBlue,
+                color: theme.primaryColor,
               ),
             ),
           ],
@@ -431,7 +429,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             helpText,
             style: TextStyle(
               fontSize: 11,
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
             ),
           ),
         ],
@@ -441,14 +439,16 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
           max: max,
           divisions: divisions,
           onChanged: onChanged,
-          activeColor: colors.primaryBlue,
-          inactiveColor: colors.divider,
+          activeColor: theme.primaryColor,
+          inactiveColor: appTheme.divider,
         ),
       ],
     );
   }
 
-  Widget _buildIntervalSetting(String title, int value, Function(int) onChanged, ThemeColors colors) {
+  Widget _buildIntervalSetting(String title, int value, Function(int) onChanged) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -458,7 +458,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             title,
             style: TextStyle(
               fontSize: 14,
-              color: colors.primaryText,
+              color: appTheme.primaryText,
             ),
           ),
           Row(
@@ -477,7 +477,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: colors.primaryBlue,
+                    color: theme.primaryColor,
                   ),
                 ),
               ),
@@ -531,24 +531,25 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
   }
 
   void _saveSettings() {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     if (_settings.isValid()) {
-      widget.onSettingsChanged(_settings);
+      widget.onSettingsChanged?.call(_settings);
       setState(() {
         _hasChanges = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Settings saved successfully'),
-          backgroundColor: colors.actionButtonBackground,
+          backgroundColor: appTheme.actionButtonBackground,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Invalid settings. Please check your values.'),
-          backgroundColor: colors.actionButtonBackground,
+          backgroundColor: appTheme.actionButtonBackground,
         ),
       );
     }
@@ -556,23 +557,24 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
 
   /// Show dialog when user tries to navigate away with unsaved changes
   void _showUnsavedChangesDialog() {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: colors.surface,
+          backgroundColor: appTheme.surface,
           title: Text(
             'Unsaved Changes',
             style: TextStyle(
-              color: colors.primaryText,
+              color: appTheme.primaryText,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
             'You have unsaved changes. Do you want to save them before leaving?',
-            style: TextStyle(color: colors.primaryText),
+            style: TextStyle(color: appTheme.primaryText),
           ),
           actions: [
             TextButton(
@@ -582,7 +584,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
               },
               child: Text(
                 'Discard',
-                style: TextStyle(color: colors.secondaryText),
+                style: TextStyle(color: appTheme.secondaryText),
               ),
             ),
             TextButton(
@@ -593,7 +595,7 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
               },
               child: Text(
                 'Save',
-                style: TextStyle(color: colors.primaryBlue),
+                style: TextStyle(color: appTheme.primaryBlue),
               ),
             ),
           ],

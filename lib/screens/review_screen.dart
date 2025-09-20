@@ -13,11 +13,12 @@ import '../services/card_display_service.dart';
 
 // Project imports - Utils
 import '../utils/constants.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 import '../utils/animation_constants.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 // Project imports - Widgets
 import '../widgets/flashcard_widget.dart';
@@ -518,24 +519,25 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: appTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: colors.appBarBackground,
-        foregroundColor: colors.appBarIcon,
+        backgroundColor: appTheme.appBarBackground,
+        foregroundColor: appTheme.appBarIcon,
         elevation: 0,
         title: Text(
           'Review: ${widget.categoryName}',
           style: TextStyle(
-            color: colors.appBarIcon,
+            color: appTheme.appBarIcon,
             fontSize: AppConstants.englishTextSize,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: colors.appBarIcon),
+          icon: Icon(Icons.arrow_back, color: appTheme.appBarIcon),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -602,10 +604,10 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
-                                  _buildSwipeHint('←', 'Keep Incorrect', colors.incorrectButton),
-                                  _buildSwipeHint('↑', 'Skip', colors.skipButton),
-                                  _buildSwipeHint('↓', 'Back', colors.actionButtonBackground),
-                                  _buildSwipeHint('→', 'Learned', colors.correctButton),
+                                  _buildSwipeHint('←', 'Keep Incorrect', appTheme.incorrectButton),
+                                  _buildSwipeHint('↑', 'Skip', appTheme.skipButton),
+                                  _buildSwipeHint('↓', 'Back', appTheme.actionButtonBackground),
+                                  _buildSwipeHint('→', 'Learned', appTheme.correctButton),
                                 ],
                               ),
                             ],
@@ -635,7 +637,8 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
   }
 
   Widget _buildLoadingCard() {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final screenHeight = MediaQuery.of(context).size.height;
     final cardHeight = screenHeight * AppConstants.cardHeightMultiplier;
     
@@ -643,12 +646,12 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
       width: double.infinity,
       height: cardHeight,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: appTheme.buttonTextOnColored,
         borderRadius: BorderRadius.circular(AppConstants.cardAnimationBorderRadius),
-        border: Border.all(color: colors.divider, width: AppConstants.cardBorderWidth),
+        border: Border.all(color: appTheme.divider, width: AppConstants.cardBorderWidth),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: AppConstants.shadowOpacity),
+            color: appTheme.cardShadow,
             blurRadius: AppConstants.cardAnimationShadowBlur,
             offset: Offset(0, AppConstants.cardAnimationShadowOffset),
             spreadRadius: AppConstants.cardAnimationShadowSpread,
@@ -666,7 +669,7 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
               'Loading review cards...',
               style: TextStyle(
                 fontSize: AppConstants.cardAnimationTextSize,
-                color: colors.secondaryText,
+                color: appTheme.secondaryText,
                 fontWeight: AppConstants.cardTitleWeight,
               ),
               textAlign: TextAlign.center,
@@ -678,7 +681,8 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
   }
 
   Widget _buildNoCardsPlaceholder() {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     final screenHeight = MediaQuery.of(context).size.height;
     final cardHeight = screenHeight * AppConstants.cardHeightMultiplier;
     
@@ -686,12 +690,12 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
       width: double.infinity,
       height: cardHeight,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: appTheme.buttonTextOnColored,
         borderRadius: BorderRadius.circular(AppConstants.cardAnimationBorderRadius),
-        border: Border.all(color: colors.divider, width: AppConstants.cardBorderWidth),
+        border: Border.all(color: appTheme.divider, width: AppConstants.cardBorderWidth),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: AppConstants.shadowOpacity),
+            color: appTheme.cardShadow,
             blurRadius: AppConstants.cardAnimationShadowBlur,
             offset: Offset(0, AppConstants.cardAnimationShadowOffset),
             spreadRadius: AppConstants.cardAnimationShadowSpread,
@@ -706,14 +710,14 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
             Icon(
               Icons.check_circle_outline,
               size: AppConstants.emptyStateIconSize,
-              color: AppColors.success,
+              color: appTheme.correctButton,
             ),
             SizedBox(height: AppConstants.cardAnimationSpacing),
             Text(
               'No incorrect cards to review!',
               style: TextStyle(
                 fontSize: AppConstants.cardAnimationTextSize,
-                color: colors.secondaryText,
+                color: appTheme.secondaryText,
                 fontWeight: AppConstants.cardTitleWeight,
               ),
               textAlign: TextAlign.center,
@@ -723,7 +727,7 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
               'Great job! All cards in this deck are correct.',
               style: TextStyle(
                 fontSize: AppConstants.cardAnimationSubtextSize,
-                color: colors.secondaryText,
+                color: appTheme.secondaryText,
               ),
               textAlign: TextAlign.center,
             ),

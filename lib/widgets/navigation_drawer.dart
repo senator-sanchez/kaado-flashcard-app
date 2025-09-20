@@ -60,58 +60,68 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     super.initState();
     _loadCategories();
     _loadReviewDecks();
+    // Listen to theme changes
+    ThemeService().addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    ThemeService().removeListener(_onThemeChanged);
+    super.dispose();
+  }
+
+  void _onThemeChanged() {
+    if (mounted) {
+      setState(() {
+        // Force rebuild when theme changes
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final appTheme = context.appTheme;
-
+    
     return Drawer(
       backgroundColor: appTheme.backgroundColor,
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(theme, appTheme),
-            Expanded(
-              child: _buildCurrentView(theme, appTheme),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(ThemeData theme, AppThemeExtension appTheme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSizes.paddingLarge),
-      decoration: BoxDecoration(
-        color: appTheme.appBarBackground,
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowLight,
-            blurRadius: AppSizes.shadowBlurSmall,
-            offset: Offset(0, AppSizes.shadowOffsetSmall),
-          ),
-        ],
-      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            AppStrings.appName,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: appTheme.appBarIcon,
-              fontWeight: FontWeight.bold,
+          // Compact header that matches theme
+          Container(
+            padding: EdgeInsets.fromLTRB(
+              AppSizes.paddingLarge, 
+              MediaQuery.of(context).padding.top + AppSizes.paddingLarge, 
+              AppSizes.paddingLarge, 
+              AppSizes.paddingLarge
+            ),
+            decoration: BoxDecoration(color: appTheme.appBarBackground),
+            child: Row(
+              children: [
+                if (_currentView != DrawerView.main)
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: appTheme.appBarIcon),
+                    onPressed: () {
+                      widget.onCloseFab?.call();
+                      setState(() => _currentView = DrawerView.main);
+                    },
+                  ),
+                Expanded(
+                  child: Text(
+                    'Kaado',
+                    style: TextStyle(
+                      color: appTheme.appBarIcon,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: AppSizes.spacingXSmall),
-          Text(
-            'v${AppStrings.appVersion}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: appTheme.appBarIcon.withOpacity(0.8),
-            ),
+          // Show content based on current view
+          Expanded(
+            child: _buildCurrentView(theme, appTheme),
           ),
         ],
       ),
@@ -134,77 +144,156 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   }
 
   Widget _buildMainMenu(ThemeData theme, AppThemeExtension appTheme) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSizes.paddingMedium),
-      children: [
-        _buildMenuTile(
-          icon: Icons.library_books,
-          title: 'Cards Browse and select category',
-          onTap: () => _navigateToView(DrawerView.cards),
-          theme: theme,
-          appTheme: appTheme,
-        ),
-        _buildMenuTile(
-          icon: Icons.quiz,
-          title: 'Review',
-          onTap: () => _navigateToView(DrawerView.review),
-          theme: theme,
-          appTheme: appTheme,
-        ),
-        _buildMenuTile(
-          icon: Icons.schedule,
-          title: 'Spaced Repetition',
-          onTap: () => _navigateToView(DrawerView.spacedRepetition),
-          theme: theme,
-          appTheme: appTheme,
-        ),
-        const SizedBox(height: AppSizes.spacingLarge),
-        _buildMenuTile(
-          icon: Icons.settings,
-          title: AppStrings.settings,
-          onTap: () => _navigateToView(DrawerView.settings),
-          theme: theme,
-          appTheme: appTheme,
-        ),
-      ],
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + AppSizes.spacingLarge,
+      ),
+      child: Column(
+        children: [
+          SizedBox(height: AppSizes.spacingMedium),
+          
+          // Cards Option
+          DrawerTile(
+            title: 'Cards',
+            subtitle: 'Browse and select flashcard categories',
+            icon: Icons.style,
+            onTap: () {
+              widget.onCloseFab?.call();
+              setState(() => _currentView = DrawerView.cards);
+            },
+          ),
+          
+          SizedBox(height: AppSizes.spacingSmall),
+          
+          // Review Option
+          DrawerTile(
+            title: 'Review',
+            subtitle: 'Practice incorrect cards',
+            icon: Icons.refresh,
+            onTap: () {
+              widget.onCloseFab?.call();
+              setState(() => _currentView = DrawerView.review);
+            },
+          ),
+          
+          SizedBox(height: AppSizes.spacingSmall),
+          
+          // Spaced Repetition Option
+          DrawerTile(
+            title: 'Daily Review',
+            subtitle: 'Cards due for spaced repetition',
+            icon: Icons.schedule,
+            onTap: () {
+              widget.onCloseFab?.call();
+              setState(() => _currentView = DrawerView.spacedRepetition);
+            },
+          ),
+          
+          SizedBox(height: AppSizes.spacingSmall),
+          
+          // Settings Option
+          DrawerTile(
+            title: 'Settings',
+            subtitle: 'Customize app appearance and data',
+            icon: Icons.settings,
+            onTap: () {
+              widget.onCloseFab?.call();
+              setState(() => _currentView = DrawerView.settings);
+            },
+          ),
+          
+          SizedBox(height: AppSizes.spacingLarge),
+          
+          // About section
+          Divider(color: appTheme.divider),
+          SectionHeader(title: 'About', icon: Icons.info_outline),
+          
+          _buildInfoTile(
+            'Version',
+            AppStrings.appVersion,
+            Icons.info,
+            theme,
+            appTheme,
+          ),
+          
+          _buildInfoTile(
+            'Developer',
+            'Kaado Team',
+            Icons.person,
+            theme,
+            appTheme,
+          ),
+          
+          _buildInfoTile(
+            'Description',
+            'Japanese Language Learning',
+            Icons.school,
+            theme,
+            appTheme,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildMenuTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    required ThemeData theme,
-    required AppThemeExtension appTheme,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
-      color: appTheme.cardBackground,
-      elevation: AppSizes.elevationLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+  Widget _buildInfoTile(
+    String title,
+    String subtitle,
+    IconData icon,
+    ThemeData theme,
+    AppThemeExtension appTheme,
+  ) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: appTheme.surface, // Use surface color
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: appTheme.divider, // Use divider color for borders
+          width: 1,
+        ),
+        // Subtle shadows like v10.2
+        boxShadow: [
+          BoxShadow(
+            color: appTheme.cardShadow,
+            blurRadius: 4.0,
+            offset: Offset(0, 2.0),
+          ),
+        ],
       ),
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: appTheme.primaryText,
-          size: AppSizes.iconMedium,
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: appTheme.surface, // Use surface color like v10.2
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: appTheme.divider, // Use divider color like v10.2
+              width: 2,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: appTheme.primaryIcon, // Use primary icon color like v10.2
+            size: 24,
+          ),
         ),
         title: Text(
           title,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: appTheme.primaryText,
+          style: TextStyle(
+            color: appTheme.primaryText, // Use primary text color (adapts to theme)
+            fontSize: 18,
             fontWeight: FontWeight.w500,
           ),
         ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: appTheme.secondaryText,
-          size: AppSizes.iconSmall,
-        ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: appTheme.secondaryText, // Use secondary text color (adapts to theme)
+            fontSize: 14,
+          ),
         ),
       ),
     );
@@ -213,7 +302,6 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   Widget _buildCardsView(ThemeData theme, AppThemeExtension appTheme) {
     return Column(
       children: [
-        _buildBackButton(theme, appTheme),
         const SectionHeader(title: 'Select Category'),
         Expanded(
           child: _isLoading
@@ -222,59 +310,100 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
                     color: theme.primaryColor,
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(AppSizes.paddingMedium),
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final category = _categories[index];
-                    return _buildCategoryTile(category, theme, appTheme);
-                  },
+              : ListView(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).padding.bottom + AppSizes.spacingLarge,
+                  ),
+                  children: _buildCategoryList(_categories, theme, appTheme),
                 ),
         ),
       ],
     );
   }
 
-  Widget _buildCategoryTile(
-    Category category,
-    ThemeData theme,
-    AppThemeExtension appTheme,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
-      color: appTheme.cardBackground,
-      elevation: AppSizes.elevationLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-      ),
-      child: ListTile(
-        title: Text(
-          category.name,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: appTheme.primaryText,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        subtitle: category.description != null
-            ? Text(
-                category.description!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: appTheme.secondaryText,
+  List<Widget> _buildCategoryList(List<Category> categories, ThemeData theme, AppThemeExtension appTheme) {
+    return categories.map((category) {
+      return _buildCategoryTile(category, theme, appTheme);
+    }).toList();
+  }
+
+  Widget _buildCategoryTile(Category category, ThemeData theme, AppThemeExtension appTheme) {
+    // If it's a bottom-level category (has cards), show as ListTile
+    if (category.isCardCategory) {
+      return ListTile(
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                category.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: appTheme.primaryText,
                 ),
-              )
-            : null,
-        trailing: Text(
-          '${category.cardCount} cards',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: appTheme.secondaryText,
-          ),
+              ),
+            ),
+            if (category.cardCount > 0)
+              Container(
+                margin: EdgeInsets.only(left: AppSizes.spacingSmall),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSizes.spacingSmall,
+                  vertical: AppSizes.spacingXSmall,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.primaryColor,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                ),
+                child: Text(
+                  '${category.cardCount}',
+                  style: TextStyle(
+                    color: appTheme.buttonTextOnColored,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
         ),
         onTap: () {
           widget.onCategorySelected?.call(category.id);
           Navigator.of(context).pop();
         },
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+      );
+    }
+    
+    // If it has children, show as ExpansionTile
+    if (category.children != null && category.children!.isNotEmpty) {
+      return ExpansionTile(
+        title: Text(
+          category.name,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: appTheme.primaryText,
+          ),
+        ),
+        iconColor: theme.primaryColor,
+        collapsedIconColor: theme.primaryColor,
+        maintainState: true,
+        initiallyExpanded: category.parentId == null, // Auto-expand top-level categories
+        children: category.children!.map((subcategory) {
+          return Padding(
+            padding: EdgeInsets.only(left: AppSizes.spacingLarge),
+            child: _buildCategoryTile(subcategory, theme, appTheme),
+          );
+        }).toList(),
+      );
+    }
+    
+    // Fallback for categories with no children and no cards
+    return ListTile(
+      title: Text(
+        category.name,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+          color: appTheme.primaryText,
         ),
       ),
     );
@@ -283,7 +412,6 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   Widget _buildReviewView(ThemeData theme, AppThemeExtension appTheme) {
     return Column(
       children: [
-        _buildBackButton(theme, appTheme),
         const SectionHeader(title: 'Review Decks'),
         Expanded(
           child: ListView.builder(
@@ -346,19 +474,17 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   Widget _buildSpacedRepetitionView(ThemeData theme, AppThemeExtension appTheme) {
     return Column(
       children: [
-        _buildBackButton(theme, appTheme),
         const SectionHeader(title: 'Spaced Repetition'),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(AppSizes.paddingMedium),
             child: Column(
               children: [
-                _buildMenuTile(
+                DrawerTile(
+                  title: 'Spaced Repetition Settings',
+                  subtitle: 'Configure learning intervals',
                   icon: Icons.settings,
-                  title: 'Settings',
                   onTap: () => _openSpacedRepetitionSettings(),
-                  theme: theme,
-                  appTheme: appTheme,
                 ),
               ],
             ),
@@ -371,7 +497,6 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   Widget _buildSettingsContent(ThemeData theme, AppThemeExtension appTheme) {
     return Column(
       children: [
-        _buildBackButton(theme, appTheme),
         const SectionHeader(title: AppStrings.settings),
         Expanded(
           child: ListView(
@@ -423,26 +548,39 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     return Card(
       margin: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
       color: isSelected
-          ? appTheme.primaryText.withOpacity(0.1)
+          ? theme.primaryColor.withOpacity(0.15)
           : appTheme.cardBackground,
-      elevation: AppSizes.elevationLow,
+      elevation: isSelected ? AppSizes.elevationMedium : AppSizes.elevationLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
         side: isSelected
             ? BorderSide(color: theme.primaryColor, width: 2)
-            : BorderSide.none,
+            : BorderSide(color: appTheme.divider, width: 1),
       ),
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? theme.primaryColor : appTheme.primaryText,
-          size: AppSizes.iconMedium,
+        leading: Container(
+          width: 48,
+          height: 48,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? theme.primaryColor
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected 
+                ? appTheme.buttonTextOnColored
+                : appTheme.primaryText,
+            size: 24,
+          ),
         ),
         title: Text(
           title,
           style: theme.textTheme.bodyLarge?.copyWith(
             color: isSelected ? theme.primaryColor : appTheme.primaryText,
-            fontWeight: FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
         subtitle: Text(
@@ -450,6 +588,8 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
           style: theme.textTheme.bodySmall?.copyWith(
             color: appTheme.secondaryText,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: isSelected
             ? Icon(
@@ -459,7 +599,10 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
               )
             : null,
         onTap: () {
+          ThemeService().setTheme(themeMode);
           widget.onThemeChanged?.call(themeMode);
+          // Force rebuild to show selection change
+          setState(() {});
         },
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
@@ -498,6 +641,8 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
           style: theme.textTheme.bodySmall?.copyWith(
             color: appTheme.secondaryText,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: Icon(
           Icons.chevron_right,
@@ -512,49 +657,7 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     );
   }
 
-  Widget _buildBackButton(ThemeData theme, AppThemeExtension appTheme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSizes.paddingMedium),
-      decoration: BoxDecoration(
-        color: appTheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: appTheme.divider,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => _navigateToView(DrawerView.main),
-            icon: Icon(
-              Icons.arrow_back,
-              color: appTheme.primaryText,
-              size: AppSizes.iconMedium,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: AppSizes.spacingSmall),
-          Text(
-            AppStrings.back,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: appTheme.primaryText,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _navigateToView(DrawerView view) {
-    setState(() {
-      _currentView = view;
-    });
-  }
 
   void _showResetConfirmation(
     BuildContext context,

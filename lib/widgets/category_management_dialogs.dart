@@ -8,13 +8,11 @@ import '../models/category.dart';
 import '../services/database_service.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
-
-// Project imports - Constants
+import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 /// Dialog for adding a new category
 class AddCategoryDialog extends StatefulWidget {
@@ -57,21 +55,23 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
       );
 
       if (mounted) {
+        final theme = Theme.of(context);
         Navigator.of(context).pop();
         widget.onCategoryAdded();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Category added successfully'),
-            backgroundColor: AppColors.success,
+            backgroundColor: theme.primaryColor,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding category: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -84,14 +84,15 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return AlertDialog(
-      backgroundColor: colors.surface,
+      backgroundColor: appTheme.surface,
       title: Text(
         'Add Category',
         style: TextStyle(
-          color: colors.primaryText,
+          color: appTheme.primaryText,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -110,9 +111,9 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                   borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                 ),
                 filled: true,
-                fillColor: colors.backgroundColor,
+                fillColor: appTheme.backgroundColor,
               ),
-              style: TextStyle(color: colors.primaryText),
+              style: TextStyle(color: appTheme.primaryText),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Category name is required';
@@ -133,9 +134,9 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                   borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                 ),
                 filled: true,
-                fillColor: colors.backgroundColor,
+                fillColor: appTheme.backgroundColor,
               ),
-              style: TextStyle(color: colors.primaryText),
+              style: TextStyle(color: appTheme.primaryText),
               maxLines: 3,
             ),
           ],
@@ -146,14 +147,14 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: Text(
             'Cancel',
-            style: TextStyle(color: colors.secondaryText),
+            style: TextStyle(color: appTheme.secondaryText),
           ),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _addCategory,
           style: ElevatedButton.styleFrom(
-            backgroundColor: colors.primaryBlue,
-            foregroundColor: colors.buttonTextOnColored,
+            backgroundColor: theme.primaryColor,
+            foregroundColor: appTheme.buttonTextOnColored,
           ),
           child: _isLoading
               ? SizedBox(
@@ -161,7 +162,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(colors.buttonTextOnColored),
+                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.buttonTextOnColored),
                   ),
                 )
               : Text('Add'),
@@ -225,21 +226,23 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
       await databaseService.updateCategory(updatedCategory);
 
       if (mounted) {
+        final theme = Theme.of(context);
         Navigator.of(context).pop();
         widget.onCategoryUpdated();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Category updated successfully'),
-            backgroundColor: AppColors.success,
+            backgroundColor: theme.primaryColor,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating category: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -252,14 +255,15 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return AlertDialog(
-      backgroundColor: colors.surface,
+      backgroundColor: appTheme.surface,
       title: Text(
         'Edit Category',
         style: TextStyle(
-          color: colors.primaryText,
+          color: appTheme.primaryText,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -278,9 +282,9 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
                   borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                 ),
                 filled: true,
-                fillColor: colors.backgroundColor,
+                fillColor: appTheme.backgroundColor,
               ),
-              style: TextStyle(color: colors.primaryText),
+              style: TextStyle(color: appTheme.primaryText),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Category name is required';
@@ -301,9 +305,9 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
                   borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                 ),
                 filled: true,
-                fillColor: colors.backgroundColor,
+                fillColor: appTheme.backgroundColor,
               ),
-              style: TextStyle(color: colors.primaryText),
+              style: TextStyle(color: appTheme.primaryText),
               maxLines: 3,
             ),
           ],
@@ -314,14 +318,14 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: Text(
             'Cancel',
-            style: TextStyle(color: colors.secondaryText),
+            style: TextStyle(color: appTheme.secondaryText),
           ),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _updateCategory,
           style: ElevatedButton.styleFrom(
-            backgroundColor: colors.primaryBlue,
-            foregroundColor: colors.buttonTextOnColored,
+            backgroundColor: theme.primaryColor,
+            foregroundColor: appTheme.buttonTextOnColored,
           ),
           child: _isLoading
               ? SizedBox(
@@ -329,7 +333,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(colors.buttonTextOnColored),
+                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.buttonTextOnColored),
                   ),
                 )
               : Text('Update'),

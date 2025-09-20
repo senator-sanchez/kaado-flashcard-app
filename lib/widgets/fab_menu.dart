@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 
 /// A Floating Action Button (FAB) menu that provides access to Shuffle and Reset actions.
 /// 
@@ -152,7 +152,8 @@ class FabMenuState extends State<FabMenu> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -173,8 +174,8 @@ class FabMenuState extends State<FabMenu> with TickerProviderStateMixin {
                       _buildMenuItem(
                         icon: Icons.shuffle,
                         label: 'Shuffle',
-                        color: colors.actionButtonBackground,
-                        textColor: colors.actionButtonText,
+                        color: theme.primaryColor,
+                        textColor: appTheme.buttonTextOnColored,
                         onPressed: () {
                           widget.onShuffle!();
                           closeMenu();
@@ -183,8 +184,8 @@ class FabMenuState extends State<FabMenu> with TickerProviderStateMixin {
                     _buildMenuItem(
                       icon: Icons.refresh,
                       label: 'Reset',
-                      color: colors.actionButtonBackground,
-                      textColor: colors.actionButtonText,
+                      color: theme.primaryColor,
+                      textColor: appTheme.buttonTextOnColored,
                       onPressed: () {
                         widget.onReset();
                         closeMenu();
@@ -204,8 +205,8 @@ class FabMenuState extends State<FabMenu> with TickerProviderStateMixin {
               angle: _rotationAnimation.value * 2 * 3.14159, // Convert to radians
               child: FloatingActionButton(
                 onPressed: _toggleMenu,
-                backgroundColor: colors.actionButtonBackground,
-                foregroundColor: colors.actionButtonText,
+                backgroundColor: theme.primaryColor,
+                foregroundColor: appTheme.buttonTextOnColored,
                 shape: const CircleBorder(),
                 child: Icon(_isOpen ? Icons.close : Icons.add),
               ),

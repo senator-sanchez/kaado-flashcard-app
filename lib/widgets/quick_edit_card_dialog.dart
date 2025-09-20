@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/flashcard.dart';
 import '../services/database_service.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_colors.dart';
 
 /// Quick edit dialog for editing cards directly from the home screen
 class QuickEditCardDialog extends StatefulWidget {
@@ -75,12 +74,13 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating card: $e'),
-            backgroundColor: AppColors.error,
+      } catch (e) {
+        if (mounted) {
+          final theme = Theme.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating card: $e'),
+              backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -93,10 +93,11 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return AlertDialog(
-      backgroundColor: colors.surface,
+      backgroundColor: appTheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
       ),
@@ -104,7 +105,7 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
       title: Text(
         'Edit Card',
         style: TextStyle(
-          color: colors.primaryText,
+          color: appTheme.primaryText,
           fontWeight: FontWeight.bold,
           fontSize: AppSizes.spacingLarge,
         ),
@@ -124,33 +125,33 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                     borderSide: BorderSide(
-                      color: colors.divider,
+                      color: appTheme.divider,
                       width: AppSizes.borderWidthThin,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                     borderSide: BorderSide(
-                      color: colors.divider,
+                      color: appTheme.divider,
                       width: AppSizes.borderWidthThin,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                     borderSide: BorderSide(
-                      color: colors.primaryBlue,
+                      color: theme.primaryColor,
                       width: AppSizes.borderWidthMedium,
                     ),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: AppSizes.paddingMedium,
                     vertical: AppSizes.paddingSmall,
                   ),
                 ),
                 style: TextStyle(
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                   fontSize: 16,
                 ),
                 validator: (value) {
@@ -173,10 +174,10 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
                 style: TextStyle(
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                   fontSize: 16,
                 ),
               ),
@@ -193,10 +194,10 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
                 style: TextStyle(
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                   fontSize: 16,
                 ),
                 validator: (value) {
@@ -219,10 +220,10 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
                 style: TextStyle(
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                   fontSize: 16,
                 ),
               ),
@@ -239,10 +240,10 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                   ),
                   filled: true,
-                  fillColor: colors.backgroundColor,
+                  fillColor: appTheme.backgroundColor,
                 ),
                 style: TextStyle(
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                   fontSize: 16,
                 ),
                 maxLines: 3,
@@ -267,7 +268,7 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
           child: Text(
             'Cancel',
             style: TextStyle(
-              color: colors.secondaryText,
+              color: appTheme.secondaryText,
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -276,8 +277,8 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
         ElevatedButton(
           onPressed: _isLoading ? null : _saveCard,
           style: ElevatedButton.styleFrom(
-            backgroundColor: colors.primaryBlue,
-            foregroundColor: colors.buttonTextOnColored,
+            backgroundColor: theme.primaryColor,
+            foregroundColor: appTheme.buttonTextOnColored,
             padding: EdgeInsets.symmetric(
               horizontal: AppSizes.paddingMedium,
               vertical: AppSizes.paddingSmall,
@@ -293,7 +294,7 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                   height: AppSizes.iconSmall,
                   child: CircularProgressIndicator(
                     strokeWidth: AppSizes.borderWidthThin,
-                    valueColor: AlwaysStoppedAnimation<Color>(colors.buttonTextOnColored),
+                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.buttonTextOnColored),
                   ),
                 )
               : Text(

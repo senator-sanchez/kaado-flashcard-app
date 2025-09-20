@@ -1,9 +1,12 @@
 // Flutter imports
 import 'package:flutter/material.dart';
 
+// Project imports - Constants
+import '../constants/app_sizes.dart';
+
 // Project imports - Utils
+import '../utils/app_theme.dart';
 import '../utils/constants.dart';
-import '../utils/theme_colors.dart';
 
 // Project imports - Widgets
 import 'text_with_background.dart';
@@ -24,10 +27,11 @@ class ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     return Container(
-      padding: EdgeInsets.all(AppConstants.cardPadding),
+      padding: const EdgeInsets.all(AppSizes.paddingMedium),
       child: Column(
         children: [
           // Progress Text and Score Text on same row
@@ -40,7 +44,7 @@ class ProgressBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: AppConstants.progressTextSize,
                   fontWeight: AppConstants.progressTextWeight,
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                 ),
               ),
               // Score Text (right side)
@@ -49,7 +53,7 @@ class ProgressBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: AppConstants.progressScoreSize,
                   fontWeight: AppConstants.progressTextWeight,
-                  color: colors.primaryText,
+                  color: appTheme.primaryText,
                 ),
               ),
             ],
@@ -61,9 +65,9 @@ class ProgressBar extends StatelessWidget {
           Container(
             height: AppConstants.progressBarHeight,
             decoration: BoxDecoration(
-              color: colors.progressBarBackground,
+              color: appTheme.surface,
               borderRadius: BorderRadius.circular(AppConstants.progressBarBorderRadius),
-              border: Border.all(color: colors.divider, width: AppConstants.progressBarBorderWidth),
+              border: Border.all(color: appTheme.divider, width: AppConstants.progressBarBorderWidth),
             ),
             child: Row(
               children: [
@@ -72,7 +76,7 @@ class ProgressBar extends StatelessWidget {
                   flex: (progressValue * AppConstants.progressMultiplier).round(),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isCompleted ? colors.progressBarCompleted : colors.progressBarFill,
+                      color: isCompleted ? theme.colorScheme.secondary : theme.primaryColor,
                       borderRadius: BorderRadius.circular(AppConstants.progressBarBorderRadius),
                     ),
                   ),
