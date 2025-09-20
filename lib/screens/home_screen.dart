@@ -18,14 +18,14 @@ import '../services/theme_service.dart';
 import '../services/background_photo_service.dart';
 import '../services/spaced_repetition_service.dart';
 
-// Project imports - Utils
-import '../utils/constants.dart';
-import '../utils/animation_constants.dart';
-import '../utils/theme_colors.dart';
-
 // Project imports - Constants
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
+
+// Project imports - Utils
+import '../utils/app_theme.dart';
+import '../utils/animation_constants.dart';
 
 // Project imports - Widgets
 import '../widgets/flashcard_widget.dart';
@@ -391,29 +391,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
+    
     return ListenableBuilder(
       listenable: ThemeService(),
       builder: (context, child) {
-        final colors = ThemeColors.instance;
     
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: appTheme.backgroundColor,
       drawer: KaadoNavigationDrawer(
         databaseService: _databaseService,
         onCategorySelected: _loadCardsForCategory,
         onResetDatabase: () {
           _loadInitialCards();
         },
-        onThemeChanged: (theme) => _onThemeChangedFromDrawer(theme),
+        onThemeChanged: (themeMode) => _onThemeChangedFromDrawer(themeMode),
         onCloseFab: _closeFabMenu,
       ),
       appBar: AppBar(
-        backgroundColor: colors.appBarBackground,
-        foregroundColor: colors.appBarIcon,
+        backgroundColor: appTheme.appBarBackground,
+        foregroundColor: appTheme.appBarIcon,
         elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: colors.appBarIcon),
+            icon: Icon(Icons.menu, color: appTheme.appBarIcon),
             onPressed: () {
               _closeFabMenu();
               Scaffold.of(context).openDrawer();
@@ -421,10 +423,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         title: Text(
-          _isReviewMode ? 'Review Mode' : 'Kaado',
-          style: TextStyle(
-            color: colors.appBarIcon,
-            fontSize: 20,
+          _isReviewMode ? AppStrings.reviewMode : AppStrings.appName,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: appTheme.appBarIcon,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -476,15 +477,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             vertical: 12.0    // Using v10.2 reviewSectionPaddingVertical
                           ),
                           decoration: BoxDecoration(
-                            color: colors.cardBackground.withValues(alpha: 0.8),
+                            color: appTheme.cardBackground.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(12.0), // Using v10.2 reviewSectionBorderRadius
-                            border: Border.all(color: colors.divider, width: 1),
+                            border: Border.all(color: appTheme.divider, width: 1),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.error_outline,
-                                color: colors.secondaryText,
+                                color: appTheme.secondaryText,
                                 size: 20,
                               ),
                               SizedBox(width: AppSizes.spacingSmall),
@@ -492,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: Text(
                                   '$incorrectCount card${incorrectCount == 1 ? '' : 's'} wrong',
                                   style: TextStyle(
-                                    color: colors.secondaryText,
+                                    color: appTheme.secondaryText,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -506,14 +507,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: Text(
                                   'Review',
                                   style: TextStyle(
-                                    color: colors.buttonTextOnColored,
+                                    color: appTheme.buttonTextOnColored,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: colors.primaryBlue,
-                                  foregroundColor: colors.buttonTextOnColored,
+                                  backgroundColor: theme.primaryColor,
+                                  foregroundColor: appTheme.buttonTextOnColored,
                                   padding: EdgeInsets.symmetric(
                                     horizontal: 16.0, // Using v10.2 reviewButtonPaddingHorizontal
                                     vertical: 8.0     // Using v10.2 reviewButtonPaddingVertical
@@ -554,15 +555,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               vertical: 12.0    // Using v10.2 reviewSectionPaddingVertical
                             ),
                             decoration: BoxDecoration(
-                              color: colors.cardBackground.withValues(alpha: 0.8),
+                              color: appTheme.cardBackground.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(12.0), // Using v10.2 reviewSectionBorderRadius
-                              border: Border.all(color: colors.divider, width: 1),
+                              border: Border.all(color: appTheme.divider, width: 1),
                             ),
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.schedule,
-                                  color: colors.primaryBlue,
+                                  color: theme.primaryColor,
                                   size: 20,
                                 ),
                                 SizedBox(width: AppSizes.spacingSmall),
@@ -570,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: Text(
                                     '$totalDue card${totalDue == 1 ? '' : 's'} due',
                                     style: TextStyle(
-                                      color: colors.secondaryText,
+                                      color: appTheme.secondaryText,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -584,14 +585,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: Text(
                                     'Review',
                                     style: TextStyle(
-                                      color: colors.buttonTextOnColored,
+                                      color: appTheme.buttonTextOnColored,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: colors.primaryBlue,
-                                    foregroundColor: colors.buttonTextOnColored,
+                                    backgroundColor: theme.primaryColor,
+                                    foregroundColor: appTheme.buttonTextOnColored,
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 16.0, // Using v10.2 reviewButtonPaddingHorizontal
                                       vertical: 8.0     // Using v10.2 reviewButtonPaddingVertical
@@ -633,7 +634,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: Text(
                               'Reviewing incorrect cards',
                               style: TextStyle(
-                                color: colors.secondaryText,
+                                color: appTheme.secondaryText,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -702,10 +703,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildSwipeHint('←', 'Wrong', colors.incorrectButton),
-                    _buildSwipeHint('↑', 'Skip', colors.skipButton),
-                    _buildSwipeHint('↓', 'Back', colors.actionButtonBackground),
-                    _buildSwipeHint('→', 'Correct', colors.correctButton),
+                    _buildSwipeHint(AppStrings.swipeLeft, AppStrings.incorrect, appTheme.incorrectButton),
+                    _buildSwipeHint(AppStrings.swipeUp, AppStrings.skip, appTheme.skipButton),
+                    _buildSwipeHint(AppStrings.swipeDown, AppStrings.back, appTheme.actionButtonBackground),
+                    _buildSwipeHint(AppStrings.swipeRight, AppStrings.correct, appTheme.correctButton),
                   ],
                 ),
               ),
@@ -1046,7 +1047,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   
   /// Build blank card placeholder
   Widget _buildBlankCardPlaceholder() {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(
@@ -1054,7 +1056,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         maxHeight: MediaQuery.of(context).size.height * 0.3,
       ),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: appTheme.cardBackground,
         borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
         boxShadow: [
           BoxShadow(
@@ -1071,18 +1073,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text(
               'No cards available',
               style: TextStyle(
-                fontSize: AppConstants.cardCompletionTitleSize,
-                color: colors.titleText,
+                fontSize: AppSizes.fontXLarge,
+                color: appTheme.primaryText,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: AppConstants.cardCompletionSubtitleSpacing),
+            const SizedBox(height: AppSizes.spacingMedium),
             Text(
               'Add cards to get started',
               style: TextStyle(
-                fontSize: AppConstants.cardCompletionSubtitleSize,
-                color: colors.secondaryText,
+                fontSize: AppSizes.fontMedium,
+                color: appTheme.secondaryText,
                 fontStyle: FontStyle.italic,
               ),
               textAlign: TextAlign.center,
@@ -1095,7 +1097,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Build loading card
   Widget _buildLoadingCard() {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(
@@ -1103,7 +1106,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         maxHeight: 200,
       ),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
+        color: appTheme.cardBackground,
         borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
         boxShadow: [
           BoxShadow(
@@ -1115,7 +1118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: Center(
         child: CircularProgressIndicator(
-          color: colors.primaryBlue,
+          color: theme.primaryColor,
         ),
       ),
     );
@@ -1132,7 +1135,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   /// Theme change handler from drawer
-  void _onThemeChangedFromDrawer(AppTheme theme) {
+  void _onThemeChangedFromDrawer(AppThemeMode theme) {
     // Update the theme service and colors
     ThemeService().setTheme(theme);
     // Force a complete rebuild to apply the new theme

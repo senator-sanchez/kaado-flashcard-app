@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
 
-// Project imports - Utils
-import '../utils/theme_colors.dart';
-
 // Project imports - Constants
-import '../constants/app_sizes.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
+
+// Project imports - Utils
+import '../utils/app_theme.dart';
 
 /// Main navigation screen with bottom navigation bar
 /// 
@@ -35,22 +36,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return Scaffold(
-      backgroundColor: colors.backgroundColor,
+      backgroundColor: appTheme.backgroundColor,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: colors.appBarBackground,
+          color: appTheme.appBarBackground,
           boxShadow: [
             BoxShadow(
               color: AppColors.shadowLight,
               blurRadius: AppSizes.shadowBlurMedium,
-              offset: Offset(0, -AppSizes.shadowOffsetSmall),
+              offset: const Offset(0, -AppSizes.shadowOffsetSmall),
             ),
           ],
         ),
@@ -62,30 +64,30 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             });
           },
           backgroundColor: Colors.transparent,
-          selectedItemColor: colors.primaryBlue,
-          unselectedItemColor: colors.secondaryText,
+          selectedItemColor: theme.primaryColor,
+          unselectedItemColor: appTheme.secondaryText,
           selectedLabelStyle: TextStyle(
-            fontSize: AppSizes.spacingSmall,
+            fontSize: AppSizes.fontSmall,
             fontWeight: FontWeight.w600,
-            color: colors.primaryBlue,
+            color: theme.primaryColor,
           ),
           unselectedLabelStyle: TextStyle(
-            fontSize: AppSizes.spacingSmall,
+            fontSize: AppSizes.fontSmall,
             fontWeight: FontWeight.w400,
-            color: colors.secondaryText,
+            color: appTheme.secondaryText,
           ),
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined, color: colors.secondaryText),
-              activeIcon: Icon(Icons.home, color: colors.primaryBlue),
-              label: 'Home',
+              icon: Icon(Icons.home_outlined, color: appTheme.secondaryText),
+              activeIcon: Icon(Icons.home, color: theme.primaryColor),
+              label: AppStrings.home,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.library_books_outlined, color: colors.secondaryText),
-              activeIcon: Icon(Icons.library_books, color: colors.primaryBlue),
-              label: 'Library',
+              icon: Icon(Icons.library_books_outlined, color: appTheme.secondaryText),
+              activeIcon: Icon(Icons.library_books, color: theme.primaryColor),
+              label: AppStrings.library,
             ),
           ],
         ),

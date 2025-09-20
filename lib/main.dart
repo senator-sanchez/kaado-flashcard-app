@@ -1,10 +1,18 @@
+// Dart imports
+import 'dart:async';
+
+// Flutter imports
 import 'package:flutter/material.dart';
+
+// Package imports
 import 'package:firebase_core/firebase_core.dart';
+
+// Project imports
+import 'constants/app_strings.dart';
 import 'firebase_options.dart';
 import 'screens/main_navigation_screen.dart';
-import 'utils/constants.dart';
-import 'services/theme_service.dart';
 import 'services/background_photo_service.dart';
+import 'services/theme_service.dart';
 
 /// Main entry point for the Kaado Japanese Language Learning App
 void main() async {
@@ -36,11 +44,16 @@ class KaadoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      theme: ThemeService().getThemeData(),
-      home: const MainNavigationScreen(),
-      debugShowCheckedModeBanner: false,
+    return ListenableBuilder(
+      listenable: ThemeService(),
+      builder: (context, child) {
+        return MaterialApp(
+          title: AppStrings.appName,
+          theme: ThemeService().themeData,
+          home: const MainNavigationScreen(),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
