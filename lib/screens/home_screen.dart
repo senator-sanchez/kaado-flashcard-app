@@ -33,7 +33,6 @@ import '../widgets/fab_menu.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/navigation_drawer.dart';
 import '../widgets/quick_edit_card_dialog.dart';
-import 'review_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

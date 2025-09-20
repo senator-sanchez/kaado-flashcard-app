@@ -75,4 +75,22 @@ class AppSizes {
   static const double elevationMedium = 4.0;
   static const double elevationHigh = 8.0;
   static const double elevationXHigh = 16.0;
+
+  // Breakpoints for responsive design
+  static const double mobileBreakpoint = 600.0;
+  static const double desktopBreakpoint = 1024.0;
+
+  // Web-specific sizes
+  static const double cardMaxWidthDesktop = 400.0;
+  static const double cardMaxWidthLargeDesktop = 500.0;
+  static const double actionButtonSize = 48.0;
+  static const double actionButtonSizeWeb = 56.0;
+
+  // Border widths
+  static const double borderWidthThin = 1.0;
+  static const double borderWidthMedium = 2.0;
+  static const double borderWidthThick = 3.0;
+
+  // Additional spacing
+  static const double spacingXXXLarge = 64.0;
 }

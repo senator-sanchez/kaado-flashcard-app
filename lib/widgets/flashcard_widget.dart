@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 // Project imports - Constants
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 
 // Project imports - Models
 import '../models/card_display_settings.dart';

@@ -103,12 +103,10 @@ class AppTheme {
       primary: _primaryBlue,
       secondary: Color(0xFF03DAC6),
       surface: Color(0xFFFFFFFF),
-      background: Color(0xFFF5F5F5),
       error: Color(0xFFB00020),
       onPrimary: Colors.white,
       onSecondary: Colors.black,
       onSurface: Colors.black87,
-      onBackground: Colors.black87,
       onError: Colors.white,
     );
 
@@ -149,7 +147,7 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: Color(0xFFFFFFFF),
         elevation: 2,
         margin: EdgeInsets.all(8),
@@ -196,12 +194,10 @@ class AppTheme {
       primary: Color(0xFF64B5F6),
       secondary: Color(0xFF03DAC6),
       surface: Color(0xFF2D2D2D),
-      background: Color(0xFF121212),
       error: Color(0xFFCF6679),
       onPrimary: Colors.black,
       onSecondary: Colors.black,
       onSurface: Colors.white,
-      onBackground: Colors.white,
       onError: Colors.black,
     );
 
@@ -242,7 +238,7 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: Color(0xFF2D2D2D),
         elevation: 4,
         margin: EdgeInsets.all(8),
