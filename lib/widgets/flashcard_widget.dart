@@ -1,9 +1,18 @@
+// Flutter imports
 import 'package:flutter/material.dart';
-import '../models/flashcard.dart';
+
+// Project imports - Constants
+import '../constants/app_colors.dart';
+import '../constants/app_sizes.dart';
+import '../constants/app_strings.dart';
+
+// Project imports - Models
 import '../models/card_display_settings.dart';
+import '../models/flashcard.dart';
+
+// Project imports - Utils
+import '../utils/app_theme.dart';
 import '../utils/constants.dart';
-import '../utils/theme_colors.dart';
-import '../utils/decoration_utils.dart';
 
 class FlashcardWidget extends StatefulWidget {
   final Flashcard flashcard;
@@ -32,7 +41,8 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
     
     
     return GestureDetector(
@@ -51,8 +61,16 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
           minHeight: AppConstants.isWeb(context) ? AppConstants.cardMinHeightWeb : AppConstants.cardMinHeight,
           maxHeight: AppConstants.isWeb(context) ? AppConstants.cardMinHeightWeb : AppConstants.cardMinHeight,
         ),
-        decoration: DecorationUtils.cardDecoration(
-          borderRadius: AppConstants.cardBorderRadius,
+        decoration: BoxDecoration(
+          color: appTheme.cardBackground,
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight,
+              blurRadius: AppSizes.shadowBlurMedium,
+              offset: const Offset(0, AppSizes.shadowOffsetSmall),
+            ),
+          ],
         ),
         child: Stack(
           children: [
@@ -68,14 +86,14 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
                 Icon(
                   Icons.celebration,
                   size: AppConstants.cardCompletionIconSize,
-                  color: colors.completionGold,
+                  color: theme.colorScheme.secondary,
                 ),
                 SizedBox(height: AppConstants.cardCompletionSpacing),
                 Text(
                   'Deck Completed!',
                   style: TextStyle(
                     fontSize: AppConstants.cardCompletionTitleSize,
-                    color: colors.titleText,
+                    color: appTheme.primaryText,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
@@ -85,18 +103,19 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
                   'Tap to reset',
                   style: TextStyle(
                     fontSize: AppConstants.cardCompletionSubtitleSize,
-                    color: colors.secondaryText,
+                    color: appTheme.secondaryText,
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ] else if (_showNotes && widget.flashcard.notes != null && widget.flashcard.notes!.isNotEmpty) ...[
                 // Show only notes content
-                _buildNotesContent(colors),
+                _buildNotesContent(theme, appTheme),
               ] else ...[
                 // Front of card - show selected front display type
                 _buildCardContent(
-                  colors,
+                  theme,
+                  appTheme,
                   _getFrontContent(),
                   isFront: true,
                 ),
@@ -108,7 +127,8 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
                   ..._getBackContent().map((content) => Padding(
                     padding: EdgeInsets.only(bottom: AppConstants.cardBackContentBottomPadding),
                     child: _buildCardContent(
-                      colors,
+                      theme,
+                      appTheme,
                       content,
                       isFront: false,
                     ),
@@ -132,12 +152,12 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
               child: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colors.primaryBlue.withValues(alpha: 0.1),
+                  color: theme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
                   Icons.edit,
-                  color: colors.primaryBlue.withValues(alpha: 0.7),
+                  color: theme.primaryColor.withValues(alpha: 0.7),
                   size: 20,
                 ),
               ),
@@ -161,12 +181,12 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
               child: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colors.primaryBlue.withValues(alpha: 0.1),
+                  color: theme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
                   Icons.note,
-                  color: colors.primaryBlue,
+                  color: theme.primaryColor,
                   size: 20,
                 ),
               ),
@@ -244,7 +264,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
   }
 
   /// Build card content with appropriate styling
-  Widget _buildCardContent(ThemeColors colors, dynamic content, {required bool isFront}) {
+  Widget _buildCardContent(ThemeData theme, AppThemeExtension appTheme, dynamic content, {required bool isFront}) {
     if (content is String) {
       // Front content - use FittedBox to scale text to fit
       return Center(
@@ -254,7 +274,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
             content,
             style: TextStyle(
               fontSize: AppConstants.cardFrontTextSize,
-              color: colors.cardText,
+              color: appTheme.primaryText,
               fontWeight: AppConstants.cardTitleWeight,
             ),
             textAlign: TextAlign.center,
@@ -266,7 +286,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
     } else if (content is CardContent) {
       // Back content - use FittedBox for scaling
       final fontSize = _getFontSizeForType(content.type);
-      final color = _getColorForType(content.type, colors);
+      final color = _getColorForType(content.type, appTheme);
       final fontWeight = _getFontWeightForType(content.type);
       final fontStyle = _getFontStyleForType(content.type);
       final isMultipleWords = _isMultipleWords(content.text);
@@ -300,9 +320,9 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
   }
 
   /// Get appropriate color for display type
-  Color _getColorForType(CardDisplayType type, ThemeColors colors) {
+  Color _getColorForType(CardDisplayType type, AppThemeExtension appTheme) {
     // Use uniform color for all back side elements
-    return colors.cardText;
+    return appTheme.primaryText;
   }
 
   /// Get appropriate font weight for display type
@@ -318,7 +338,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
   }
 
   /// Build notes content display
-  Widget _buildNotesContent(ThemeColors colors) {
+  Widget _buildNotesContent(ThemeData theme, AppThemeExtension appTheme) {
     return Center(
       child: Padding(
         padding: EdgeInsets.all(AppConstants.cardPadding),
@@ -326,7 +346,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
           widget.flashcard.notes!,
           style: TextStyle(
             fontSize: AppConstants.cardBackTextSize,
-            color: colors.cardText,
+            color: appTheme.primaryText,
             fontWeight: FontWeight.w500,
             height: 1.4,
           ),

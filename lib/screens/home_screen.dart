@@ -624,9 +624,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         vertical: 12.0    // Using v10.2 mediumSpacing
                       ),
                       decoration: BoxDecoration(
-                        color: colors.cardBackground.withValues(alpha: 0.8),
+                        color: appTheme.cardBackground.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(12.0), // Using v10.2 reviewSectionBorderRadius
-                        border: Border.all(color: colors.divider, width: 1),
+                        border: Border.all(color: appTheme.divider, width: 1),
                       ),
                       child: Row(
                         children: [
@@ -648,14 +648,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             child: Text(
                               'Back',
                               style: TextStyle(
-                                color: colors.buttonTextOnColored,
+                                color: appTheme.buttonTextOnColored,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.primaryBlue,
-                              foregroundColor: colors.buttonTextOnColored,
+                              backgroundColor: theme.primaryColor,
+                              foregroundColor: appTheme.buttonTextOnColored,
                               padding: EdgeInsets.symmetric(
                                 horizontal: 16.0, // Using v10.2 reviewButtonPaddingHorizontal
                                 vertical: 8.0     // Using v10.2 reviewButtonPaddingVertical
