@@ -1,0 +1,285 @@
+// Flutter imports
+import 'package:flutter/material.dart';
+
+// Project imports - Models
+import '../models/flashcard.dart';
+
+// Project imports - Services
+import '../services/database_service.dart';
+
+// Project imports - Utils
+import '../utils/theme_colors.dart';
+
+// Project imports - Constants
+import '../constants/app_sizes.dart';
+
+// Project imports - Constants
+import '../constants/app_colors.dart';
+
+/// Dialog for adding and editing flashcards
+/// 
+/// This dialog provides:
+/// - Form fields for all card properties (Kana, Hiragana, English, Romaji)
+/// - Validation and error handling
+/// - Save and cancel actions
+/// - Clean, user-friendly interface
+class CardEditDialog extends StatefulWidget {
+  final int categoryId;
+  final Flashcard? card;
+
+  final VoidCallback onCardSaved;
+
+  const CardEditDialog({
+    super.key,
+    required this.categoryId,
+    this.card,
+    required this.onCardSaved,
+  });
+
+  @override
+  State<CardEditDialog> createState() => _CardEditDialogState();
+}
+
+class _CardEditDialogState extends State<CardEditDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _kanaController = TextEditingController();
+  final _hiraganaController = TextEditingController();
+  final _englishController = TextEditingController();
+  final _romajiController = TextEditingController();
+  final _notesController = TextEditingController();
+  
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.card != null) {
+      _kanaController.text = widget.card!.kana;
+      _hiraganaController.text = widget.card!.hiragana ?? '';
+      _englishController.text = widget.card!.english;
+      _romajiController.text = widget.card!.romaji ?? '';
+      _notesController.text = widget.card!.notes ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _kanaController.dispose();
+    _hiraganaController.dispose();
+    _englishController.dispose();
+    _romajiController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  /// Save the card
+  Future<void> _saveCard() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final databaseService = DatabaseService();
+      
+      if (widget.card != null) {
+        // Update existing card
+        final updatedCard = Flashcard(
+          id: widget.card!.id,
+          kana: _kanaController.text.trim(),
+          hiragana: _hiraganaController.text.trim().isEmpty ? null : _hiraganaController.text.trim(),
+          english: _englishController.text.trim(),
+          romaji: _romajiController.text.trim().isEmpty ? null : _romajiController.text.trim(),
+          scriptType: widget.card!.scriptType,
+          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          categoryId: widget.card!.categoryId,
+          categoryName: widget.card!.categoryName,
+        );
+        
+        await databaseService.updateCard(updatedCard);
+      } else {
+        // Create new card
+        await databaseService.addCard(
+          widget.categoryId,
+          _kanaController.text.trim(),
+          _englishController.text.trim(),
+          hiragana: _hiraganaController.text.trim().isEmpty ? null : _hiraganaController.text.trim(),
+          romaji: _romajiController.text.trim().isEmpty ? null : _romajiController.text.trim(),
+          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        );
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        widget.onCardSaved();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.card != null ? 'Card updated successfully' : 'Card added successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving card: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ThemeColors.instance;
+    final isEditing = widget.card != null;
+
+    return AlertDialog(
+      backgroundColor: colors.surface,
+      title: Text(
+        isEditing ? 'Edit Card' : 'Add Card',
+        style: TextStyle(
+          color: colors.primaryText,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Kana field (required)
+              TextFormField(
+                controller: _kanaController,
+                decoration: InputDecoration(
+                  labelText: 'Kana *',
+                  hintText: 'Japanese text (kanji, hiragana, katakana)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  ),
+                  filled: true,
+                  fillColor: colors.backgroundColor,
+                ),
+                style: TextStyle(color: colors.primaryText),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Kana is required';
+                  }
+                  return null;
+                },
+              ),
+
+              SizedBox(height: AppSizes.spacingMedium),
+
+              // Hiragana field (optional)
+              TextFormField(
+                controller: _hiraganaController,
+                decoration: InputDecoration(
+                  labelText: 'Hiragana',
+                  hintText: 'Hiragana reading (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  ),
+                  filled: true,
+                  fillColor: colors.backgroundColor,
+                ),
+                style: TextStyle(color: colors.primaryText),
+              ),
+
+              SizedBox(height: AppSizes.spacingMedium),
+
+              // English field (required)
+              TextFormField(
+                controller: _englishController,
+                decoration: InputDecoration(
+                  labelText: 'English *',
+                  hintText: 'English translation',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  ),
+                  filled: true,
+                  fillColor: colors.backgroundColor,
+                ),
+                style: TextStyle(color: colors.primaryText),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'English translation is required';
+                  }
+                  return null;
+                },
+              ),
+
+              SizedBox(height: AppSizes.spacingMedium),
+
+              // Romaji field (optional)
+              TextFormField(
+                controller: _romajiController,
+                decoration: InputDecoration(
+                  labelText: 'Romaji',
+                  hintText: 'Romaji reading (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  ),
+                  filled: true,
+                  fillColor: colors.backgroundColor,
+                ),
+                style: TextStyle(color: colors.primaryText),
+              ),
+
+              SizedBox(height: AppSizes.spacingMedium),
+
+              // Notes field (optional)
+              TextFormField(
+                controller: _notesController,
+                decoration: InputDecoration(
+                  labelText: 'Notes',
+                  hintText: 'Additional notes (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  ),
+                  filled: true,
+                  fillColor: colors.backgroundColor,
+                ),
+                style: TextStyle(color: colors.primaryText),
+                maxLines: 3,
+                minLines: 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: colors.secondaryText),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _saveCard,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.primaryBlue,
+            foregroundColor: colors.buttonTextOnColored,
+          ),
+          child: _isLoading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(colors.buttonTextOnColored),
+                  ),
+                )
+              : Text(isEditing ? 'Update' : 'Add'),
+        ),
+      ],
+    );
+  }
+}

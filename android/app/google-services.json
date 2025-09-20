@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "134812932196",
+    "project_id": "kaado-b7fdb",
+    "storage_bucket": "kaado-b7fdb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:134812932196:android:e108d67afbc61f545d2771",
+        "android_client_info": {
+          "package_name": "com.claytontechnologies.kaado"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0vd53xVIcjekmO13pOMSxqiWKXg4pXPA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

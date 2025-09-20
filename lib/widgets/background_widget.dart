@@ -1,0 +1,161 @@
+import 'package:flutter/material.dart';
+import '../services/background_photo_service.dart';
+import '../utils/theme_colors.dart';
+import '../utils/constants.dart';
+
+/// Widget that provides background for the app
+/// Can display either a solid color or a background photo
+class BackgroundWidget extends StatefulWidget {
+  final Widget child;
+  final bool showBackgroundPhoto;
+
+  const BackgroundWidget({
+    super.key,
+    required this.child,
+    this.showBackgroundPhoto = true,
+  });
+
+  @override
+  State<BackgroundWidget> createState() => _BackgroundWidgetState();
+}
+
+class _BackgroundWidgetState extends State<BackgroundWidget> {
+  final BackgroundPhotoService _backgroundPhotoService = BackgroundPhotoService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _backgroundPhotoService.addListener(_onBackgroundPhotoChanged);
+  }
+
+  @override
+  void dispose() {
+    _backgroundPhotoService.removeListener(_onBackgroundPhotoChanged);
+    super.dispose();
+  }
+
+  void _onBackgroundPhotoChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ThemeColors.instance;
+    final hasBackgroundPhoto = _backgroundPhotoService.hasBackgroundPhoto;
+    final backgroundPhotoPath = _backgroundPhotoService.backgroundPhotoPath;
+
+    return Container(
+      decoration: _buildBackgroundDecoration(colors, hasBackgroundPhoto, backgroundPhotoPath),
+      child: widget.child,
+    );
+  }
+
+  BoxDecoration _buildBackgroundDecoration(
+    ThemeColors colors,
+    bool hasBackgroundPhoto,
+    String? backgroundPhotoPath,
+  ) {
+    if (widget.showBackgroundPhoto && hasBackgroundPhoto && backgroundPhotoPath != null) {
+      // Use background photo
+      return BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(backgroundPhotoPath),
+          fit: BoxFit.cover,
+        ),
+      );
+    } else {
+      // Use solid color background
+      return BoxDecoration(
+        color: colors.backgroundColor,
+      );
+    }
+  }
+}
+
+/// Alternative implementation using File image for local photos (Traditional State Management)
+class BackgroundWidgetWithFile extends StatefulWidget {
+  final Widget child;
+  final bool showBackgroundPhoto;
+
+  const BackgroundWidgetWithFile({
+    super.key,
+    required this.child,
+    this.showBackgroundPhoto = true,
+  });
+
+  @override
+  State<BackgroundWidgetWithFile> createState() => _BackgroundWidgetWithFileState();
+}
+
+class _BackgroundWidgetWithFileState extends State<BackgroundWidgetWithFile> {
+  final BackgroundPhotoService _backgroundPhotoService = BackgroundPhotoService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _backgroundPhotoService.addListener(_onBackgroundPhotoChanged);
+  }
+
+  @override
+  void dispose() {
+    _backgroundPhotoService.removeListener(_onBackgroundPhotoChanged);
+    super.dispose();
+  }
+
+  void _onBackgroundPhotoChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = ThemeColors.instance;
+    final hasBackgroundPhoto = _backgroundPhotoService.hasBackgroundPhoto;
+
+    return Container(
+      decoration: _buildBackgroundDecoration(colors, hasBackgroundPhoto, _backgroundPhotoService),
+      child: widget.child,
+    );
+  }
+
+  BoxDecoration _buildBackgroundDecoration(
+    ThemeColors colors,
+    bool hasBackgroundPhoto,
+    backgroundPhotoService,
+  ) {
+    if (widget.showBackgroundPhoto && hasBackgroundPhoto) {
+      final backgroundPath = backgroundPhotoService.backgroundPhotoPath;
+      if (backgroundPath != null) {
+        // Check if it's a default asset or a file
+        if (backgroundPath.startsWith(AppConstants.assetsPath)) {
+          // Use asset image
+          return BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage(backgroundPath),
+              fit: BoxFit.cover,
+            ),
+          );
+        } else {
+          // Use file image
+          final backgroundFile = backgroundPhotoService.backgroundPhotoFile;
+          if (backgroundFile != null) {
+            return BoxDecoration(
+              image: DecorationImage(
+                image: FileImage(backgroundFile),
+                fit: BoxFit.cover,
+              ),
+            );
+          }
+        }
+      }
+    }
+    
+    // Use solid color background
+    return BoxDecoration(
+      color: colors.backgroundColor,
+    );
+  }
+}
