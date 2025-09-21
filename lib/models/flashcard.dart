@@ -7,6 +7,7 @@ class Flashcard {
   final String? romaji; // Romaji reading (optional)
   final String? scriptType; // Type of Japanese script
   final String? notes; // Free text notes for the card
+  final bool isFavorite; // Whether this card is marked as favorite
   final int categoryId; // Category this card belongs to
   final String? categoryName; // Name of the category (computed field)
 
@@ -18,6 +19,7 @@ class Flashcard {
     this.romaji,
     this.scriptType,
     this.notes,
+    this.isFavorite = false,
     required this.categoryId,
     this.categoryName,
   });
@@ -32,6 +34,7 @@ class Flashcard {
       romaji: map['romaji'],
       scriptType: map['script_type'],
       notes: map['notes'],
+      isFavorite: (map['is_favorite'] ?? 0) == 1,
       categoryId: map['category_id'] ?? 0,
       categoryName: map['category_name'],
     );
@@ -47,6 +50,7 @@ class Flashcard {
       'romaji': romaji,
       'script_type': scriptType,
       'notes': notes,
+      'is_favorite': isFavorite ? 1 : 0,
       'category_id': categoryId,
       // Note: category_name is a computed field, not a database column
     };

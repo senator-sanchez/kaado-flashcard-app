@@ -739,6 +739,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       isCompleted: _isDeckCompleted(),
       onTap: _isDeckCompleted() ? _resetCards : _toggleAnswer,
       onEdit: _showEditCardDialog,
+      onToggleFavorite: _toggleFavorite,
     );
 
     return _buildSwipeableCard(cardWidget);
@@ -1142,6 +1143,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // The theme change will be picked up by ThemeColors.instance
       // which will automatically update all colors
     });
+  }
+
+  /// Toggle favorite status of the current card
+  Future<void> _toggleFavorite() async {
+    if (_currentCards.isEmpty) return;
+    
+    try {
+      final currentCard = _getCurrentFlashcard();
+      await _databaseService.toggleFavorite(currentCard.id);
+      
+      // Update the current card in the list with the new favorite status
+      final updatedCard = Flashcard(
+        id: currentCard.id,
+        kana: currentCard.kana,
+        hiragana: currentCard.hiragana,
+        english: currentCard.english,
+        romaji: currentCard.romaji,
+        scriptType: currentCard.scriptType,
+        notes: currentCard.notes,
+        isFavorite: !currentCard.isFavorite, // Toggle the favorite status
+        categoryId: currentCard.categoryId,
+        categoryName: currentCard.categoryName,
+      );
+      
+      setState(() {
+        _currentCards[_currentCardIndex] = updatedCard;
+      });
+    } catch (e) {
+      // Handle error silently or show a snackbar
+      print('Error toggling favorite: $e');
+    }
   }
   
   /// Card swipe vibration handler

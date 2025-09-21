@@ -828,4 +828,59 @@ class DatabaseService {
     // Also delete from IncorrectCards if it exists
     await db.delete('IncorrectCards', where: 'card_id = ?', whereArgs: [cardId]);
   }
+
+  // ===== FAVORITES MANAGEMENT METHODS =====
+
+  /// Toggle favorite status of a card
+  Future<void> toggleFavorite(int cardId) async {
+    final db = await database;
+    
+    // Get current favorite status
+    final result = await db.query(
+      'Card',
+      columns: ['is_favorite'],
+      where: 'id = ?',
+      whereArgs: [cardId],
+    );
+    
+    if (result.isNotEmpty) {
+      final currentStatus = result.first['is_favorite'] as int? ?? 0;
+      final newStatus = currentStatus == 1 ? 0 : 1;
+      
+      await db.update(
+        'Card',
+        {'is_favorite': newStatus},
+        where: 'id = ?',
+        whereArgs: [cardId],
+      );
+    }
+  }
+
+  /// Get all favorite cards
+  Future<List<Flashcard>> getFavoriteCards() async {
+    final db = await database;
+    
+    final results = await db.rawQuery('''
+      SELECT c.*, cat.name as category_name
+      FROM Card c
+      LEFT JOIN Category cat ON c.category_id = cat.id
+      WHERE c.is_favorite = 1
+      ORDER BY c.id
+    ''');
+    
+    return results.map((map) => Flashcard.fromMap(map)).toList();
+  }
+
+  /// Get favorite cards count
+  Future<int> getFavoriteCardsCount() async {
+    final db = await database;
+    
+    final result = await db.rawQuery('''
+      SELECT COUNT(*) as count
+      FROM Card
+      WHERE is_favorite = 1
+    ''');
+    
+    return result.first['count'] as int? ?? 0;
+  }
 }

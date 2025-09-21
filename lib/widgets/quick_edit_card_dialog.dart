@@ -97,7 +97,7 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
     final appTheme = context.appTheme;
 
     return AlertDialog(
-      backgroundColor: appTheme.surface,
+      backgroundColor: appTheme.backgroundColor, // Match main home screen background
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
       ),
@@ -121,7 +121,7 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                 controller: _kanaController,
                 decoration: InputDecoration(
                   labelText: 'Kana *',
-                  hintText: 'Japanese text (kanji, hiragana, katakana)',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                     borderSide: BorderSide(
@@ -144,14 +144,14 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                     ),
                   ),
                   filled: true,
-                  fillColor: appTheme.backgroundColor,
+                  fillColor: appTheme.cardBackground, // Use theme grey
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: AppSizes.paddingMedium,
                     vertical: AppSizes.paddingSmall,
                   ),
                 ),
                 style: TextStyle(
-                  color: appTheme.primaryText,
+                  color: appTheme.primaryText, // Use theme text color
                   fontSize: 16,
                 ),
                 validator: (value) {
@@ -169,15 +169,37 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                 controller: _hiraganaController,
                 decoration: InputDecoration(
                   labelText: 'Hiragana',
-                  hintText: 'Hiragana reading (optional)',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: theme.primaryColor,
+                      width: AppSizes.borderWidthMedium,
+                    ),
                   ),
                   filled: true,
-                  fillColor: appTheme.backgroundColor,
+                  fillColor: appTheme.cardBackground, // Use theme grey
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.paddingMedium,
+                    vertical: AppSizes.paddingSmall,
+                  ),
                 ),
                 style: TextStyle(
-                  color: appTheme.primaryText,
+                  color: appTheme.primaryText, // Use theme text color
                   fontSize: 16,
                 ),
               ),
@@ -189,15 +211,37 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                 controller: _englishController,
                 decoration: InputDecoration(
                   labelText: 'English *',
-                  hintText: 'English translation',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: theme.primaryColor,
+                      width: AppSizes.borderWidthMedium,
+                    ),
                   ),
                   filled: true,
-                  fillColor: appTheme.backgroundColor,
+                  fillColor: appTheme.cardBackground, // Use theme grey
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.paddingMedium,
+                    vertical: AppSizes.paddingSmall,
+                  ),
                 ),
                 style: TextStyle(
-                  color: appTheme.primaryText,
+                  color: appTheme.primaryText, // Use theme text color
                   fontSize: 16,
                 ),
                 validator: (value) {
@@ -215,15 +259,37 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                 controller: _romajiController,
                 decoration: InputDecoration(
                   labelText: 'Romaji',
-                  hintText: 'Romaji reading (optional)',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: theme.primaryColor,
+                      width: AppSizes.borderWidthMedium,
+                    ),
                   ),
                   filled: true,
-                  fillColor: appTheme.backgroundColor,
+                  fillColor: appTheme.cardBackground, // Use theme grey
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.paddingMedium,
+                    vertical: AppSizes.paddingSmall,
+                  ),
                 ),
                 style: TextStyle(
-                  color: appTheme.primaryText,
+                  color: appTheme.primaryText, // Use theme text color
                   fontSize: 16,
                 ),
               ),
@@ -235,15 +301,37 @@ class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
                 controller: _notesController,
                 decoration: InputDecoration(
                   labelText: 'Notes',
-                  hintText: 'Additional notes (optional)',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: appTheme.divider,
+                      width: AppSizes.borderWidthThin,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                    borderSide: BorderSide(
+                      color: theme.primaryColor,
+                      width: AppSizes.borderWidthMedium,
+                    ),
                   ),
                   filled: true,
-                  fillColor: appTheme.backgroundColor,
+                  fillColor: appTheme.cardBackground, // Use theme grey
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.paddingMedium,
+                    vertical: AppSizes.paddingSmall,
+                  ),
                 ),
                 style: TextStyle(
-                  color: appTheme.primaryText,
+                  color: appTheme.primaryText, // Use theme text color
                   fontSize: 16,
                 ),
                 maxLines: 3,

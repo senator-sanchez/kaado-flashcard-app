@@ -2,7 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 /// Database migration service to handle schema updates
 class DatabaseMigration {
-  static const int currentVersion = 5;
+  static const int currentVersion = 6;
   static const int initialVersion = 1;
 
   /// Apply database migrations
@@ -18,6 +18,9 @@ class DatabaseMigration {
     }
     if (oldVersion < 5) {
       await _addNotesColumn(db);
+    }
+    if (oldVersion < 6) {
+      await _addIsFavoriteColumn(db);
     }
   }
 
@@ -120,6 +123,14 @@ class DatabaseMigration {
     // Add notes column to Card table if it doesn't exist
     await db.execute('''
       ALTER TABLE Card ADD COLUMN notes TEXT
+    ''');
+  }
+
+  /// Add is_favorite column to Card table
+  static Future<void> _addIsFavoriteColumn(Database db) async {
+    // Add is_favorite column to Card table if it doesn't exist
+    await db.execute('''
+      ALTER TABLE Card ADD COLUMN is_favorite INTEGER DEFAULT 0
     ''');
   }
 }

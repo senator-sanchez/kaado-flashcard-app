@@ -230,6 +230,13 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
           borderRadius: BorderRadius.circular(0),
         ),
         tileColor: Colors.transparent,
+        leading: category.id == -1 // Special handling for Favorites category
+            ? Icon(
+                Icons.star,
+                color: Colors.amber,
+                size: 24,
+              )
+            : null,
         title: Row(
               children: [
             Expanded(
@@ -546,8 +553,30 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
 
     try {
       final categories = await widget.databaseService.getCategoryTree();
+      
+      // Add Favorites category as a special category under Japanese
+      final favoritesCount = await widget.databaseService.getFavoriteCardsCount();
+      final favoritesCategory = Category(
+        id: -1, // Special ID for favorites
+        name: 'Favorites',
+        description: 'Your favorite cards',
+        parentId: null,
+        cardCount: favoritesCount,
+        isCardCategory: true,
+      );
+      
+      // Insert Favorites after Japanese (assuming Japanese is first)
+      final updatedCategories = <Category>[];
+      for (int i = 0; i < categories.length; i++) {
+        updatedCategories.add(categories[i]);
+        // Add Favorites after the first top-level category (Japanese)
+        if (i == 0 && categories[i].parentId == null) {
+          updatedCategories.add(favoritesCategory);
+        }
+      }
+      
       setState(() {
-        _categories = categories;
+        _categories = updatedCategories;
         _isLoading = false;
       });
     } catch (e) {

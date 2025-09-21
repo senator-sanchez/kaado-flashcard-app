@@ -20,6 +20,7 @@ class FlashcardWidget extends StatefulWidget {
   final VoidCallback onTap;
   final CardDisplaySettings? displaySettings;
   final VoidCallback? onEdit;
+  final VoidCallback? onToggleFavorite;
 
   const FlashcardWidget({
     super.key,
@@ -29,6 +30,7 @@ class FlashcardWidget extends StatefulWidget {
     required this.onTap,
     this.displaySettings,
     this.onEdit,
+    this.onToggleFavorite,
   });
 
   @override
@@ -151,12 +153,12 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
               child: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Colors.white.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
                   Icons.edit,
-                  color: theme.primaryColor,
+                  color: theme.primaryColor.withValues(alpha: 0.8),
                   size: 20,
                 ),
               ),
@@ -180,13 +182,35 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
               child: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Colors.white.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
                   Icons.note,
-                  color: theme.primaryColor,
+                  color: theme.primaryColor.withValues(alpha: 0.8),
                   size: 20,
+                ),
+              ),
+            ),
+          ),
+        
+        // Star icon (favorites) - only show when card is flipped (back side)
+        if (widget.showAnswer && widget.onToggleFavorite != null)
+          Positioned(
+            top: 8,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  widget.onToggleFavorite?.call();
+                },
+                child: Icon(
+                  widget.flashcard.isFavorite ? Icons.star : Icons.star_border,
+                  color: widget.flashcard.isFavorite 
+                      ? Colors.amber 
+                      : theme.primaryColor.withValues(alpha: 0.8),
+                  size: 28, // Larger star icon
                 ),
               ),
             ),

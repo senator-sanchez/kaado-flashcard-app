@@ -159,100 +159,120 @@ class _CardEditDialogState extends State<CardEditDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Kana field (required)
-              TextFormField(
-                controller: _kanaController,
-                decoration: InputDecoration(
-                  labelText: 'Kana *',
-                  hintText: 'Japanese text (kanji, hiragana, katakana)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  ),
-                  filled: true,
-                  fillColor: appTheme.backgroundColor,
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF000000), // Pure black for maximum contrast
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  border: Border.all(color: appTheme.divider),
                 ),
-                style: TextStyle(color: appTheme.primaryText),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Kana is required';
-                  }
-                  return null;
-                },
+                child: TextFormField(
+                  controller: _kanaController,
+                  decoration: InputDecoration(
+                    labelText: 'Kana *',
+                    hintText: 'Japanese text (kanji, hiragana, katakana)',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                  style: TextStyle(color: appTheme.primaryText),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Kana is required';
+                    }
+                    return null;
+                  },
+                ),
               ),
 
               SizedBox(height: AppSizes.spacingMedium),
 
               // Hiragana field (optional)
-              TextFormField(
-                controller: _hiraganaController,
-                decoration: InputDecoration(
-                  labelText: 'Hiragana',
-                  hintText: 'Hiragana reading (optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  ),
-                  filled: true,
-                  fillColor: appTheme.backgroundColor,
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF000000), // Pure black for maximum contrast
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  border: Border.all(color: appTheme.divider),
                 ),
-                style: TextStyle(color: appTheme.primaryText),
+                child: TextFormField(
+                  controller: _hiraganaController,
+                  decoration: InputDecoration(
+                    labelText: 'Hiragana',
+                    hintText: 'Hiragana reading (optional)',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                  style: TextStyle(color: appTheme.primaryText),
+                ),
               ),
 
               SizedBox(height: AppSizes.spacingMedium),
 
               // English field (required)
-              TextFormField(
-                controller: _englishController,
-                decoration: InputDecoration(
-                  labelText: 'English *',
-                  hintText: 'English translation',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  ),
-                  filled: true,
-                  fillColor: appTheme.backgroundColor,
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF000000), // Pure black for maximum contrast
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  border: Border.all(color: appTheme.divider),
                 ),
-                style: TextStyle(color: appTheme.primaryText),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'English translation is required';
-                  }
-                  return null;
-                },
+                child: TextFormField(
+                  controller: _englishController,
+                  decoration: InputDecoration(
+                    labelText: 'English *',
+                    hintText: 'English translation',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                  style: TextStyle(color: appTheme.primaryText),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'English translation is required';
+                    }
+                    return null;
+                  },
+                ),
               ),
 
               SizedBox(height: AppSizes.spacingMedium),
 
               // Romaji field (optional)
-              TextFormField(
-                controller: _romajiController,
-                decoration: InputDecoration(
-                  labelText: 'Romaji',
-                  hintText: 'Romaji reading (optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  ),
-                  filled: true,
-                  fillColor: appTheme.backgroundColor,
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF000000), // Pure black for maximum contrast
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  border: Border.all(color: appTheme.divider),
                 ),
-                style: TextStyle(color: appTheme.primaryText),
+                child: TextFormField(
+                  controller: _romajiController,
+                  decoration: InputDecoration(
+                    labelText: 'Romaji',
+                    hintText: 'Romaji reading (optional)',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                  style: TextStyle(color: appTheme.primaryText),
+                ),
               ),
 
               SizedBox(height: AppSizes.spacingMedium),
 
               // Notes field (optional)
-              TextFormField(
-                controller: _notesController,
-                decoration: InputDecoration(
-                  labelText: 'Notes',
-                  hintText: 'Additional notes (optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  ),
-                  filled: true,
-                  fillColor: appTheme.backgroundColor,
+              Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF000000), // Pure black for maximum contrast
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  border: Border.all(color: appTheme.divider),
                 ),
-                style: TextStyle(color: appTheme.primaryText),
-                maxLines: 3,
-                minLines: 1,
+                child: TextFormField(
+                  controller: _notesController,
+                  decoration: InputDecoration(
+                    labelText: 'Notes',
+                    hintText: 'Additional notes (optional)',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(16),
+                  ),
+                  style: TextStyle(color: appTheme.primaryText),
+                  maxLines: 3,
+                  minLines: 1,
+                ),
               ),
             ],
           ),
