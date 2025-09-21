@@ -1,9 +1,3 @@
-/// Spaced Repetition Settings Model
-/// 
-/// This model represents user-customizable settings for the spaced repetition system.
-/// Allows users to personalize their learning experience based on their preferences
-/// and learning style.
-
 /// User-customizable settings for spaced repetition
 class SpacedRepetitionSettings {
   // === Interval Settings ===

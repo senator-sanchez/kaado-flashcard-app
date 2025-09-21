@@ -13,7 +13,6 @@ import '../utils/constants.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
-import '../constants/app_colors.dart';
 
 // Project imports - Constants
 
@@ -23,7 +22,6 @@ import 'category_detail_screen.dart';
 // Project imports - Widgets
 import '../widgets/category_management_dialogs.dart';
 import '../widgets/navigation_drawer.dart';
-import '../widgets/category_tree_view.dart';
 
 /// Library screen for browsing categories and managing cards
 /// 
@@ -241,8 +239,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
           // Search bar
           Padding(
             padding: EdgeInsets.all(AppConstants.cardPadding),
@@ -294,6 +293,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     : _buildCategoriesList(),
           ),
         ],
+        ),
       ),
     );
   }
@@ -378,92 +378,113 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// Build categories list
   Widget _buildCategoriesList() {
     final theme = Theme.of(context);
+    final appTheme = context.appTheme;
+    
     return RefreshIndicator(
       onRefresh: _loadCategories,
       color: theme.primaryColor,
-      child: CategoryTreeView(
-        categories: _getFilteredCategories(),
-        onCategoryTap: _navigateToCategory,
-        onCategoryEdit: _showEditCategoryDialog,
-        onCategoryDelete: _showDeleteCategoryDialog,
-      ),
-    );
-  }
-
-  /// Show edit category dialog
-  void _showEditCategoryDialog(Category category) {
-    showDialog(
-      context: context,
-      builder: (context) => EditCategoryDialog(
-        category: category,
-        onCategoryUpdated: () {
-          _loadCategories();
+      child: ListView.builder(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 16, // Add padding for system UI
+        ),
+        itemCount: _getFilteredCategories().length,
+        itemBuilder: (context, index) {
+          final category = _getFilteredCategories()[index];
+          return _buildCategoryTile(category, theme, appTheme);
         },
       ),
     );
   }
 
-  /// Show delete category dialog
-  void _showDeleteCategoryDialog(Category category) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-        final appTheme = context.appTheme;
-        return AlertDialog(
-        backgroundColor: appTheme.surface,
-        title: Text(
-          'Delete Category',
-          style: TextStyle(
-            color: appTheme.primaryText,
-            fontWeight: FontWeight.bold,
-          ),
+  /// Build category tile with the same styling as navigation drawer
+  Widget _buildCategoryTile(Category category, ThemeData theme, AppThemeExtension appTheme) {
+    // If it has children, show as ExpansionTile
+    if (category.children != null && category.children!.isNotEmpty) {
+      return ExpansionTile(
+        tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(0),
         ),
-        content: Text(
-          'Are you sure you want to delete "${category.name}"? This will also delete all cards in this category.',
-          style: TextStyle(color: appTheme.primaryText),
+        collapsedShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(0),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: appTheme.secondaryText),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                category.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: appTheme.primaryText,
+                ),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              try {
-                await _databaseService.deleteCategory(category.id);
-                _loadCategories();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Category deleted successfully'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error deleting category: $e'),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(
-              'Delete',
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-          ),
-        ],
+            if (category.cardCount > 0)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${category.cardCount}',
+                  style: TextStyle(
+                    color: theme.primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        iconColor: theme.primaryColor,
+        collapsedIconColor: theme.primaryColor,
+        maintainState: true,
+        initiallyExpanded: category.parentId == null, // Auto-expand top-level categories
+        children: category.children!.map((subcategory) {
+          return Padding(
+            padding: EdgeInsets.only(left: AppSizes.spacingLarge),
+            child: _buildCategoryTile(subcategory, theme, appTheme),
+          );
+        }).toList(),
       );
-      },
+    }
+    
+    // Leaf category - show as ListTile with tap action and card count
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(0),
+      ),
+      tileColor: Colors.transparent,
+      title: Text(
+        category.name,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+          color: appTheme.primaryText,
+        ),
+      ),
+      trailing: category.cardCount > 0 
+        ? Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${category.cardCount}',
+              style: TextStyle(
+                color: theme.primaryColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        : null,
+      onTap: () => _navigateToCategory(category),
     );
   }
+
 }

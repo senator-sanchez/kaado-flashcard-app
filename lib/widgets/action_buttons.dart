@@ -15,7 +15,6 @@ class ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appTheme = context.appTheme;
     return Container(
       padding: EdgeInsets.symmetric(
         vertical: 8, 

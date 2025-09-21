@@ -1,8 +1,3 @@
-/// Spaced Repetition Settings Screen
-/// 
-/// This screen allows users to customize their spaced repetition settings
-/// including intervals, ease factors, daily limits, and review order.
-
 // Flutter imports
 import 'package:flutter/material.dart';
 
@@ -39,7 +34,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
 
     return Scaffold(
@@ -296,7 +290,9 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
             title: Text(_getReviewOrderTitle(order)),
             subtitle: Text(_getReviewOrderSubtitle(order)),
             value: order,
+            // ignore: deprecated_member_use
             groupValue: _settings.reviewOrder,
+            // ignore: deprecated_member_use
             onChanged: (value) {
               if (value != null) {
                 _updateSetting((s) => s.copyWith(reviewOrder: value));

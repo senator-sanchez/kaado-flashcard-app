@@ -124,9 +124,11 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
           ),
           // Show content based on current view
           Expanded(
-            child: Container(
-              color: appTheme.backgroundColor,
-              child: _buildCurrentView(theme, appTheme),
+            child: SafeArea(
+              child: Container(
+                color: appTheme.backgroundColor,
+                child: _buildCurrentView(theme, appTheme),
+              ),
             ),
           ),
         ],
@@ -283,13 +285,35 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
         collapsedShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(0),
         ),
-        title: Text(
-          category.name,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-            color: appTheme.primaryText,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                category.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: appTheme.primaryText,
+                ),
+              ),
+            ),
+            if (category.cardCount > 0)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${category.cardCount}',
+                  style: TextStyle(
+                    color: theme.primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
         ),
         iconColor: theme.primaryColor,
         collapsedIconColor: theme.primaryColor,
@@ -313,12 +337,33 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
       tileColor: Colors.transparent,
       title: Text(
         category.name,
-              style: TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 16,
           color: appTheme.primaryText,
         ),
       ),
+      trailing: category.cardCount > 0 
+        ? Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${category.cardCount}',
+              style: TextStyle(
+                color: theme.primaryColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        : null,
+      onTap: () {
+        widget.onCategorySelected?.call(category.id);
+        Navigator.of(context).pop();
+      },
     );
   }
 

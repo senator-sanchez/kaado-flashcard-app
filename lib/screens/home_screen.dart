@@ -416,7 +416,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         title: Text(
-          _isReviewMode ? AppStrings.reviewMode : AppStrings.appName,
+          _isReviewMode ? AppStrings.reviewMode : _getCurrentCategoryTitle(),
           style: theme.textTheme.titleLarge?.copyWith(
             color: appTheme.appBarIcon,
             fontWeight: FontWeight.bold,
@@ -795,7 +795,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   Future<int> _getIncorrectCardsCount() async {
-    return await _databaseService.getTotalIncorrectCards();
+    return await _databaseService.getIncorrectCardsForCategory(_currentCategoryId).then((cards) => cards.length);
+  }
+
+  String _getCurrentCategoryTitle() {
+    if (_currentCategoryId == -1) {
+      return 'Favorites';
+    } else if (_currentCategoryId == 0) {
+      return AppStrings.appName;
+    } else {
+      if (_currentCards.isNotEmpty) {
+        return _currentCards.first.categoryName ?? AppStrings.appName;
+      }
+      return AppStrings.appName;
+    }
   }
   
   Future<Map<String, int>> _getSpacedRepetitionStats() async {

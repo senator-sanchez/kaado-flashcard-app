@@ -63,7 +63,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
           maxHeight: AppConstants.isWeb(context) ? AppConstants.cardMinHeightWeb : AppConstants.cardMinHeight,
         ),
         decoration: BoxDecoration(
-          color: appTheme.appBarBackground,
+          color: appTheme.cardBackground,
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           boxShadow: [
             BoxShadow(

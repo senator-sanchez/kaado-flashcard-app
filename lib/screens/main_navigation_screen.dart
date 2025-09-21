@@ -11,6 +11,7 @@ import '../constants/app_strings.dart';
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
+import '../utils/system_ui_utils.dart';
 
 /// Main navigation screen with bottom navigation bar
 /// 
@@ -18,6 +19,7 @@ import '../utils/app_theme.dart';
 /// - Bottom navigation bar for switching between Home and Library
 /// - Consistent theming across all screens
 /// - Proper state management for navigation
+/// - Android system navigation bar detection and padding
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -36,6 +38,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     final appTheme = context.appTheme;
+    
+    // Get system navigation bar height (Android's 3-line navigation)
+    final systemNavigationBarHeight = SystemUIUtils.getSystemNavigationBarHeight(context);
+    final hasSystemNavBar = SystemUIUtils.hasSystemNavigationBar(context);
+    
+    // Calculate total height: base height + system navigation bar
+    final totalBottomBarHeight = SystemUIUtils.getRecommendedBottomNavigationHeight(context);
 
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
@@ -45,76 +54,89 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         children: _screens,
       ),
       bottomNavigationBar: Container(
-        height: 80,
+        height: totalBottomBarHeight,
         decoration: BoxDecoration(
           color: appTheme.appBarBackground,
         ),
-        child: Row(
+        child: Column(
           children: [
+            // Main navigation content
             Expanded(
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _currentIndex = 0;
-                  });
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _currentIndex == 0 ? Icons.home : Icons.home_outlined,
-                      color: _currentIndex == 0 
-                          ? appTheme.appBarIcon 
-                          : appTheme.appBarIcon.withValues(alpha: 0.7),
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppStrings.home,
-                      style: TextStyle(
-                        fontSize: AppSizes.fontSmall,
-                        fontWeight: _currentIndex == 0 ? FontWeight.w600 : FontWeight.w400,
-                        color: _currentIndex == 0 
-                            ? appTheme.appBarIcon 
-                            : appTheme.appBarIcon.withValues(alpha: 0.7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _currentIndex = 0;
+                        });
+                      },
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                            color: _currentIndex == 0 
+                                ? appTheme.appBarIcon 
+                                : appTheme.appBarIcon.withValues(alpha: 0.7),
+                            size: 24,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            AppStrings.home,
+                            style: TextStyle(
+                              fontSize: AppSizes.fontSmall,
+                              fontWeight: _currentIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                              color: _currentIndex == 0 
+                                  ? appTheme.appBarIcon 
+                                  : appTheme.appBarIcon.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _currentIndex = 1;
-                  });
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _currentIndex == 1 ? Icons.library_books : Icons.library_books_outlined,
-                      color: _currentIndex == 1 
-                          ? appTheme.appBarIcon 
-                          : appTheme.appBarIcon.withValues(alpha: 0.7),
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppStrings.library,
-                      style: TextStyle(
-                        fontSize: AppSizes.fontSmall,
-                        fontWeight: _currentIndex == 1 ? FontWeight.w600 : FontWeight.w400,
-                        color: _currentIndex == 1 
-                            ? appTheme.appBarIcon 
-                            : appTheme.appBarIcon.withValues(alpha: 0.7),
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _currentIndex = 1;
+                        });
+                      },
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _currentIndex == 1 ? Icons.library_books : Icons.library_books_outlined,
+                            color: _currentIndex == 1 
+                                ? appTheme.appBarIcon 
+                                : appTheme.appBarIcon.withValues(alpha: 0.7),
+                            size: 24,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            AppStrings.library,
+                            style: TextStyle(
+                              fontSize: AppSizes.fontSmall,
+                              fontWeight: _currentIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                              color: _currentIndex == 1 
+                                  ? appTheme.appBarIcon 
+                                  : appTheme.appBarIcon.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+            // System navigation bar padding
+            if (hasSystemNavBar)
+              Container(
+                height: systemNavigationBarHeight,
+                color: appTheme.appBarBackground,
+              ),
           ],
         ),
       ),

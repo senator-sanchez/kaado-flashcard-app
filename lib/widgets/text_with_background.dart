@@ -133,7 +133,6 @@ class _WidgetWithBackgroundState extends State<WidgetWithBackground> {
 
   @override
   Widget build(BuildContext context) {
-    final appTheme = context.appTheme;
     final hasBackgroundImage = _backgroundPhotoService.hasBackgroundPhoto;
 
     if (!hasBackgroundImage) {

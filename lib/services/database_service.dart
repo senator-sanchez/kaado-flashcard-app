@@ -18,7 +18,6 @@ import '../models/spaced_repetition.dart';
 import '../models/spaced_repetition_settings.dart';
 
 // Project imports - Services
-import 'database_migration.dart';
 
 /// Service for managing database operations with the Japanese language database
 /// Uses a pre-built SQLite database packaged with the app
@@ -41,35 +40,29 @@ class DatabaseService {
     // Get the database path from assets
     final dbPath = await _getDatabasePath();
     
-    // Open the database file with migration support
+    // Open the database file
     final db = await openDatabase(
       dbPath,
-      version: DatabaseMigration.currentVersion,
-      onUpgrade: DatabaseMigration.migrate,
-      onCreate: (db, version) async {
-        // This won't be called since we're copying from assets, but good to have
-        await DatabaseMigration.migrate(db, 0, version);
-      },
+      version: 1,
       readOnly: false, // Allow writes for incorrect cards tracking
     );
     
     return db;
   }
 
-  /// Get the database path from assets (always copy fresh from assets)
+  /// Get the database path from assets (use database directly from assets)
   Future<String> _getDatabasePath() async {
     // Get the app's documents directory
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbPath = join(documentsDirectory.path, 'japanese.db');
     
-    // Database path set
-    
-    // Always copy fresh database from assets to ensure clean data
-    // Copying fresh database from assets
-    final ByteData data = await rootBundle.load('database/japanese.db');
+    // Check if database already exists in documents directory
     final dbFile = File(dbPath);
-    await dbFile.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
-    // Fresh database copied from assets
+    if (!await dbFile.exists()) {
+      // Only copy from assets if database doesn't exist
+      final ByteData data = await rootBundle.load('database/japanese.db');
+      await dbFile.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+    }
     
     return dbPath;
   }
@@ -279,7 +272,7 @@ class DatabaseService {
       _database = null;
     }
     
-    // Force reinitialization (will always copy fresh from assets)
+    // Force reinitialization
     _database = await _initDatabase();
   }
 

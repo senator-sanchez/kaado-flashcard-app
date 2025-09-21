@@ -143,12 +143,13 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
               Navigator.of(context).pop();
               try {
                 await widget.databaseService.deleteCard(card.id);
                 _loadCards();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('Card deleted successfully'),
                       backgroundColor: theme.primaryColor,
@@ -157,7 +158,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('Error deleting card: $e'),
                       backgroundColor: theme.colorScheme.error,
@@ -205,8 +206,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
           // Category info and search
           Container(
             padding: EdgeInsets.all(AppConstants.cardPadding),
@@ -288,6 +290,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                     : _buildCardsList(),
           ),
         ],
+        ),
       ),
     );
   }
@@ -376,7 +379,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       onRefresh: _loadCards,
       color: theme.primaryColor,
       child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: AppConstants.cardPadding),
+        padding: EdgeInsets.only(
+          left: AppConstants.cardPadding,
+          right: AppConstants.cardPadding,
+          bottom: MediaQuery.of(context).padding.bottom + 16, // Add padding for system UI
+        ),
         itemCount: _filteredCards.length,
         itemBuilder: (context, index) {
           final card = _filteredCards[index];

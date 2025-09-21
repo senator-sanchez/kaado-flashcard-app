@@ -1,8 +1,3 @@
-/// App Logger Service
-/// 
-/// This service provides centralized logging functionality for the app.
-/// It helps with debugging and monitoring app behavior.
-
 import 'dart:developer' as developer;
 
 /// Centralized logging service for the app

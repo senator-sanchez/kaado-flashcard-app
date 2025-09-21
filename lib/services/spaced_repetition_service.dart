@@ -1,9 +1,3 @@
-/// Spaced Repetition Service
-/// 
-/// This service implements the spaced repetition algorithm to optimize
-/// learning by scheduling cards for review based on performance and
-/// forgetting curves. Based on the SM-2 algorithm with improvements.
-
 import 'dart:math';
 import '../models/spaced_repetition.dart';
 import '../models/spaced_repetition_settings.dart';

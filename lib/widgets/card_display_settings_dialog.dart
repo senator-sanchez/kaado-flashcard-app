@@ -134,7 +134,9 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
       ),
       child: RadioListTile<CardDisplayType>(
         value: type,
+        // ignore: deprecated_member_use
         groupValue: selectedType,
+        // ignore: deprecated_member_use
         onChanged: onChanged,
         title: Text(
           type.displayName,

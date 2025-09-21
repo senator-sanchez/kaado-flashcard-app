@@ -53,7 +53,6 @@ class _BackgroundPhotoSettingsTraditionalState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final hasBackgroundPhoto = _backgroundPhotoService.hasBackgroundPhoto;
 
