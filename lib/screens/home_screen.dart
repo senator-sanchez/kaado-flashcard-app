@@ -381,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_currentCardIndex >= _currentCards.length) {
           _currentCardIndex = _currentCards.length - 1;
         }
-        _showAnswer = false;
+        // Preserve the current flip state instead of resetting to false
       });
     } catch (e) {
       // Continue with existing cards

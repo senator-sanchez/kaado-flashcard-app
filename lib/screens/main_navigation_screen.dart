@@ -42,6 +42,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
       body: IndexedStack(
+        key: ValueKey(_currentIndex), // Force rebuild when switching screens
         index: _currentIndex,
         children: _screens,
       ),
@@ -49,13 +50,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         height: 80,
         decoration: BoxDecoration(
           color: appTheme.appBarBackground,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowLight,
-              blurRadius: AppSizes.shadowBlurMedium,
-              offset: const Offset(0, -AppSizes.shadowOffsetSmall),
-            ),
-          ],
         ),
         child: Row(
           children: [

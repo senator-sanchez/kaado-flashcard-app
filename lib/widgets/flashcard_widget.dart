@@ -61,7 +61,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
           maxHeight: AppConstants.isWeb(context) ? AppConstants.cardMinHeightWeb : AppConstants.cardMinHeight,
         ),
         decoration: BoxDecoration(
-          color: appTheme.cardBackground,
+          color: appTheme.appBarBackground,
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           boxShadow: [
             BoxShadow(
@@ -151,12 +151,12 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
               child: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.primaryColor.withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
                   Icons.edit,
-                  color: theme.primaryColor.withValues(alpha: 0.7),
+                  color: theme.primaryColor,
                   size: 20,
                 ),
               ),
@@ -180,7 +180,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
               child: Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.primaryColor.withValues(alpha: 0.1),
+                  color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(

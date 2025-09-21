@@ -262,12 +262,32 @@ class _BackgroundPhotoSettingsTraditionalState
   }
 
   Future<void> _pickFromGallery() async {
-    final success = await _backgroundPhotoService.pickBackgroundPhoto();
+    try {
+      print('DEBUG: Starting _pickFromGallery');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Starting image picker...'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      
+      final success = await _backgroundPhotoService.pickBackgroundPhoto();
+      print('DEBUG: pickBackgroundPhoto returned: $success');
 
-    if (success) {
-      // Background photo updated from gallery
-    } else {
-      _showErrorMessage('Failed to pick photo from gallery');
+      if (success) {
+        // Background photo updated from gallery
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Background photo updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        _showErrorMessage('Failed to pick photo from gallery');
+      }
+    } catch (e) {
+      print('DEBUG: Error in _pickFromGallery: $e');
+      _showErrorMessage('Error picking photo: $e');
     }
   }
 
