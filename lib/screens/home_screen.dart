@@ -13,6 +13,7 @@ import '../models/spaced_repetition.dart';
 
 // Project imports - Services
 import '../services/database_service.dart';
+import '../services/app_logger.dart';
 import '../services/card_display_service.dart';
 import '../services/theme_service.dart';
 import '../services/background_photo_service.dart';
@@ -55,14 +56,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _showAnswer = false;
   int _currentCategoryId = 0;
   bool _isReviewMode = false;
-  List<Flashcard> _originalDeck = []; // Store original deck when entering review mode
-  
-  // === Progress Tracking ===
-  int _correctAnswers = 0;
-  int _totalAnswers = 0;
   
   // === Previous Card History ===
-  List<Map<String, dynamic>> _cardHistory = []; // List of {index, answer} maps
+  final List<Map<String, dynamic>> _cardHistory = []; // List of {index, answer} maps
   
   // === Animation Controllers ===
   late AnimationController _swipeAnimationController;
@@ -173,13 +169,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _loadCardsForCategory(int categoryId) async {
     setState(() => _isLoading = true);
     try {
-      final cards = await _databaseService.getCardsByCategory(categoryId);
+      List<Flashcard> cards;
+      if (categoryId == -1) {
+        // Special case for Favorites
+        cards = await _databaseService.getFavoriteCards();
+      } else {
+        cards = await _databaseService.getCardsByCategory(categoryId);
+      }
       
       setState(() {
         _currentCards = cards;
         _currentCardIndex = 0;
-        _correctAnswers = 0;
-        _totalAnswers = 0;
         _showAnswer = false; // Reset answer visibility for new cards
         _cardHistory.clear(); // Clear card history
         _isLoading = false;
@@ -203,13 +203,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           currentCard.categoryId,
         );
         
-        if (spacedCard == null) {
-          // Create new spaced repetition card
-          spacedCard = _spacedRepetitionService.createNewCard(
+        spacedCard ??= _spacedRepetitionService.createNewCard(
             currentCard.id,
             currentCard.categoryId,
           );
-        }
         
         // Calculate next review based on performance
         final updatedCard = _spacedRepetitionService.calculateNextReview(
@@ -255,8 +252,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'answer': isCorrect,
       });
       
-      _correctAnswers += isCorrect ? 1 : 0;
-      _totalAnswers++;
       _advanceToNextCard();
     });
   }
@@ -288,8 +283,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       // Undo the previous answer from statistics
       if (previousAnswer != null) {
-        _correctAnswers -= previousAnswer ? 1 : 0;
-        _totalAnswers--;
+        // Statistics tracking removed
       }
       
       // Go back to previous card
@@ -356,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     final currentCard = _getCurrentFlashcard();
     final latestCard = await _databaseService.getCardById(currentCard.id);
-    if (latestCard == null) return;
+    if (latestCard == null || !mounted) return;
     
     showDialog(
       context: context,
@@ -503,14 +497,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   _closeFabMenu();
                                   _startIncorrectCardsReview();
                                 },
-                                child: Text(
-                                  'Review',
-                                  style: TextStyle(
-                                    color: appTheme.buttonTextOnColored,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: theme.primaryColor,
                                   foregroundColor: appTheme.buttonTextOnColored,
@@ -522,6 +508,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8.0), // Using v10.2 reviewButtonBorderRadius
+                                  ),
+                                ),
+                                child: Text(
+                                  'Review',
+                                  style: TextStyle(
+                                    color: appTheme.buttonTextOnColored,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
@@ -581,14 +575,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     _closeFabMenu();
                                     _startSpacedRepetitionReview();
                                   },
-                                  child: Text(
-                                    'Review',
-                                    style: TextStyle(
-                                      color: appTheme.buttonTextOnColored,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: theme.primaryColor,
                                     foregroundColor: appTheme.buttonTextOnColored,
@@ -600,6 +586,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8.0), // Using v10.2 reviewButtonBorderRadius
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Review',
+                                    style: TextStyle(
+                                      color: appTheme.buttonTextOnColored,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
@@ -644,14 +638,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               _closeFabMenu();
                               _backToOriginalDeck();
                             },
-                            child: Text(
-                              'Back',
-                              style: TextStyle(
-                                color: appTheme.buttonTextOnColored,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: theme.primaryColor,
                               foregroundColor: appTheme.buttonTextOnColored,
@@ -663,6 +649,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8.0), // Using v10.2 reviewButtonBorderRadius
+                              ),
+                            ),
+                            child: Text(
+                              'Back',
+                              style: TextStyle(
+                                color: appTheme.buttonTextOnColored,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -839,16 +833,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   
-  /// Handle card tap to flip
-  void _onCardTap() {
-    if (_isDeckCompleted()) {
-      _resetCards();
-    } else {
-      setState(() {
-        _showAnswer = !_showAnswer;
-      });
-    }
-  }
 
   /// Handle pan start
   void _onPanStart(DragStartDetails details) {
@@ -1039,15 +1023,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  /// Reset all animations
-  void _resetAllAnimations() {
-    _resetCardPosition();
-  }
   
   
   /// Build blank card placeholder
   Widget _buildBlankCardPlaceholder() {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     return Container(
       width: double.infinity,
@@ -1172,25 +1151,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
     } catch (e) {
       // Handle error silently or show a snackbar
-      print('Error toggling favorite: $e');
+      AppLogger.error('Error toggling favorite', e);
     }
   }
   
-  /// Card swipe vibration handler
-  void _onCardSwipeVibration() {
-    HapticFeedback.mediumImpact();
-  }
   
-  /// Load current category
-  Future<void> _loadCurrentCategory() async {
-    if (_currentCategoryId > 0) {
-      await _loadCardsForCategory(_currentCategoryId);
-    }
-  }
   
-  /// Get current category name
-  String get _currentCategoryName {
-    // This would need to be tracked separately or retrieved from database
-    return 'Current Category';
-  }
 }

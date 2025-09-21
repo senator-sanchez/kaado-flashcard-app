@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 
 /// A hierarchical tree view widget for displaying categories
 /// 

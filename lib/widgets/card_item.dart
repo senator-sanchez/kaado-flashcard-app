@@ -7,10 +7,6 @@ import '../models/flashcard.dart';
 // Project imports - Utils
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
-
-// Project imports - Constants
-import '../constants/app_sizes.dart';
 
 // Project imports - Constants
 

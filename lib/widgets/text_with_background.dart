@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../utils/app_theme.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 import '../services/background_photo_service.dart';
 
@@ -53,7 +51,6 @@ class _TextWithBackgroundState extends State<TextWithBackground> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final hasBackgroundImage = _backgroundPhotoService.hasBackgroundPhoto;
 
@@ -136,7 +133,6 @@ class _WidgetWithBackgroundState extends State<WidgetWithBackground> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final hasBackgroundImage = _backgroundPhotoService.hasBackgroundPhoto;
 

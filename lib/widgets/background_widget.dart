@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/background_photo_service.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 
 /// Widget that provides background for the app
@@ -42,18 +42,18 @@ class _BackgroundWidgetState extends State<BackgroundWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final appTheme = context.appTheme;
     final hasBackgroundPhoto = _backgroundPhotoService.hasBackgroundPhoto;
     final backgroundPhotoPath = _backgroundPhotoService.backgroundPhotoPath;
 
     return Container(
-      decoration: _buildBackgroundDecoration(colors, hasBackgroundPhoto, backgroundPhotoPath),
+      decoration: _buildBackgroundDecoration(appTheme, hasBackgroundPhoto, backgroundPhotoPath),
       child: widget.child,
     );
   }
 
   BoxDecoration _buildBackgroundDecoration(
-    ThemeColors colors,
+    AppThemeExtension appTheme,
     bool hasBackgroundPhoto,
     String? backgroundPhotoPath,
   ) {
@@ -68,7 +68,7 @@ class _BackgroundWidgetState extends State<BackgroundWidget> {
     } else {
       // Use solid color background
       return BoxDecoration(
-        color: colors.backgroundColor,
+        color: appTheme.backgroundColor,
       );
     }
   }
@@ -112,17 +112,17 @@ class _BackgroundWidgetWithFileState extends State<BackgroundWidgetWithFile> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final appTheme = context.appTheme;
     final hasBackgroundPhoto = _backgroundPhotoService.hasBackgroundPhoto;
 
     return Container(
-      decoration: _buildBackgroundDecoration(colors, hasBackgroundPhoto, _backgroundPhotoService),
+      decoration: _buildBackgroundDecoration(appTheme, hasBackgroundPhoto, _backgroundPhotoService),
       child: widget.child,
     );
   }
 
   BoxDecoration _buildBackgroundDecoration(
-    ThemeColors colors,
+    AppThemeExtension appTheme,
     bool hasBackgroundPhoto,
     backgroundPhotoService,
   ) {
@@ -155,7 +155,7 @@ class _BackgroundWidgetWithFileState extends State<BackgroundWidgetWithFile> {
     
     // Use solid color background
     return BoxDecoration(
-      color: colors.backgroundColor,
+        color: appTheme.backgroundColor,
     );
   }
 }

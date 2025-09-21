@@ -92,19 +92,16 @@ class BackgroundPhotoService extends ChangeNotifier {
 
   /// Pick a background photo from gallery
   Future<bool> pickBackgroundPhoto() async {
-    print('DEBUG: pickBackgroundPhoto called');
+    AppLogger.info('pickBackgroundPhoto called');
     if (_isLoading) {
-      print('DEBUG: Already loading, returning false');
       AppLogger.info('Background photo picker is already loading');
       return false;
     }
     
-    print('DEBUG: Starting background photo picker');
     AppLogger.info('Starting background photo picker');
     _setLoading(true);
     
     try {
-      print('DEBUG: Opening image picker');
       AppLogger.info('Opening image picker');
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -113,32 +110,25 @@ class BackgroundPhotoService extends ChangeNotifier {
         imageQuality: 85,
       );
 
-      print('DEBUG: Image picker returned: ${image?.path}');
       if (image != null) {
-        print('DEBUG: Image selected: ${image.path}');
         AppLogger.info('Image selected: ${image.path}');
         // Copy the image to app directory
         final String savedPath = await _saveImageToAppDirectory(image.path);
-        print('DEBUG: Image saved to: $savedPath');
         AppLogger.info('Image saved to: $savedPath');
         _backgroundPhotoPath = savedPath;
         await _saveBackgroundPhotoPath(savedPath);
         notifyListeners();
-        print('DEBUG: Background photo updated successfully');
         AppLogger.info('Background photo updated successfully');
         return true;
       } else {
-        print('DEBUG: No image selected');
         AppLogger.info('No image selected');
       }
     } catch (e) {
-      print('DEBUG: Error in pickBackgroundPhoto: $e');
       AppLogger.error('Error picking background photo', e);
     } finally {
       _setLoading(false);
     }
     
-    print('DEBUG: Returning false');
     return false;
   }
 

@@ -4,7 +4,6 @@
 /// that helps users learn more effectively by scheduling cards for review
 /// based on their performance and forgetting curves.
 
-
 /// Represents the spaced repetition data for a single card
 class SpacedRepetitionCard {
   final int cardId;

@@ -14,8 +14,6 @@ import '../services/card_display_service.dart';
 // Project imports - Utils
 import '../utils/constants.dart';
 import '../utils/app_theme.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 import '../utils/animation_constants.dart';
 
 // Project imports - Constants
@@ -132,6 +130,7 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
         });
         _advanceToNextCard();
       } catch (e) {
+        // Handle error silently
       }
     }
   }
@@ -144,6 +143,7 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
         await widget.databaseService.markCardReviewed(currentCard.id, widget.categoryId);
         _advanceToNextCard();
       } catch (e) {
+        // Handle error silently
       }
     }
   }
@@ -211,7 +211,7 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
     
     // Fetch the latest card data from database to ensure notes are included
     final latestCard = await widget.databaseService.getCardById(currentCard.id);
-    if (latestCard == null) return;
+    if (latestCard == null || !mounted) return;
     
     showDialog(
       context: context,
@@ -519,7 +519,6 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
     return Scaffold(
@@ -637,7 +636,6 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
   }
 
   Widget _buildLoadingCard() {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final screenHeight = MediaQuery.of(context).size.height;
     final cardHeight = screenHeight * AppConstants.cardHeightMultiplier;
@@ -681,7 +679,6 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
   }
 
   Widget _buildNoCardsPlaceholder() {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final screenHeight = MediaQuery.of(context).size.height;
     final cardHeight = screenHeight * AppConstants.cardHeightMultiplier;

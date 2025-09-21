@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
-import '../constants/app_colors.dart';
 
 /// Utility class for common decoration patterns
 /// Helps maintain consistency and reduces code duplication

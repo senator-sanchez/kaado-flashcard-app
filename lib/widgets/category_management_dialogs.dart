@@ -10,7 +10,6 @@ import '../services/database_service.dart';
 // Project imports - Utils
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 
 // Project imports - Constants
 

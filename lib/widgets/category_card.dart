@@ -5,13 +5,12 @@ import 'package:flutter/material.dart';
 import '../models/category.dart';
 
 // Project imports - Utils
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 
 /// A card widget for displaying category information
 /// 
@@ -36,7 +35,8 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final theme = Theme.of(context);
+    final appTheme = context.appTheme;
 
     return Card(
       margin: EdgeInsets.only(bottom: AppSizes.spacingMedium),
@@ -62,7 +62,7 @@ class CategoryCard extends StatelessWidget {
                         Text(
                           category.name,
                           style: TextStyle(
-                            color: colors.primaryText,
+                            color: appTheme.primaryText,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -72,7 +72,7 @@ class CategoryCard extends StatelessWidget {
                           Text(
                             category.description!,
                             style: TextStyle(
-                              color: colors.secondaryText,
+                              color: appTheme.secondaryText,
                               fontSize: 14,
                             ),
                             maxLines: 2,
@@ -98,7 +98,7 @@ class CategoryCard extends StatelessWidget {
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit, size: 20, color: colors.primaryIcon),
+                            Icon(Icons.edit, size: 20, color: appTheme.primaryIcon),
                             SizedBox(width: 8),
                             Text('Edit'),
                           ],
@@ -108,7 +108,7 @@ class CategoryCard extends StatelessWidget {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete, size: 20, color: AppColors.error),
+                            Icon(Icons.delete, size: 20, color: theme.colorScheme.error),
                             SizedBox(width: 8),
                             Text('Delete'),
                           ],
@@ -117,7 +117,7 @@ class CategoryCard extends StatelessWidget {
                     ],
                     child: Icon(
                       Icons.more_vert,
-                      color: colors.primaryIcon,
+                      color: appTheme.primaryIcon,
                     ),
                   ),
                 ],
@@ -131,13 +131,13 @@ class CategoryCard extends StatelessWidget {
                   Icon(
                     Icons.style,
                     size: 16,
-                    color: colors.primaryIcon,
+                    color: appTheme.primaryIcon,
                   ),
                   SizedBox(width: 4),
                   Text(
-                    '${category.cardCount ?? 0} cards',
+                    '${category.cardCount} cards',
                     style: TextStyle(
-                      color: colors.secondaryText,
+                      color: appTheme.secondaryText,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -146,7 +146,7 @@ class CategoryCard extends StatelessWidget {
                   Icon(
                     Icons.arrow_forward_ios,
                     size: 16,
-                    color: colors.primaryIcon,
+                    color: appTheme.primaryIcon,
                   ),
                 ],
               ),

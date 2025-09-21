@@ -2,13 +2,11 @@
 import 'package:flutter/material.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings.dart';
 
 // Project imports - Models
 import '../models/category.dart';
-import '../models/incorrect_card.dart';
 
 // Project imports - Services
 import '../services/database_service.dart';
@@ -16,7 +14,6 @@ import '../services/spaced_repetition_service.dart';
 import '../services/theme_service.dart';
 
 // Project imports - Screens
-import '../screens/review_screen.dart';
 import '../screens/spaced_repetition_settings_screen.dart';
 
 // Project imports - Utils
@@ -52,14 +49,12 @@ enum DrawerView { main, cards, review, settings }
 class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   DrawerView _currentView = DrawerView.main;
   List<Category> _categories = [];
-  List<ReviewDeck> _reviewDecks = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
-    _loadReviewDecks();
     // Listen to theme changes
     ThemeService().addListener(_onThemeChanged);
   }
@@ -367,49 +362,6 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     );
   }
 
-  Widget _buildReviewDeckTile(
-    ReviewDeck deck,
-    ThemeData theme,
-    AppThemeExtension appTheme,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
-      color: appTheme.cardBackground,
-      elevation: AppSizes.elevationLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-      ),
-      child: ListTile(
-        leading: Icon(
-          Icons.quiz,
-          color: appTheme.primaryText,
-          size: AppSizes.iconMedium,
-        ),
-        title: Text(
-          deck.name,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: appTheme.primaryText,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        subtitle: Text(
-          '${deck.cardCount} cards',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: appTheme.secondaryText,
-          ),
-        ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: appTheme.secondaryText,
-          size: AppSizes.iconSmall,
-        ),
-        onTap: () => _openReviewScreen(deck),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-        ),
-      ),
-    );
-  }
 
 
   Widget _buildSettingsContent(ThemeData theme, AppThemeExtension appTheme) {
@@ -554,24 +506,45 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     try {
       final categories = await widget.databaseService.getCategoryTree();
       
-      // Add Favorites category as a special category under Japanese
+      // Add Favorites category as a child under Japanese
       final favoritesCount = await widget.databaseService.getFavoriteCardsCount();
       final favoritesCategory = Category(
         id: -1, // Special ID for favorites
         name: 'Favorites',
         description: 'Your favorite cards',
-        parentId: null,
+        parentId: 1, // Assuming Japanese has ID 1
         cardCount: favoritesCount,
         isCardCategory: true,
       );
       
-      // Insert Favorites after Japanese (assuming Japanese is first)
+      // Add Favorites as a child of Japanese
       final updatedCategories = <Category>[];
       for (int i = 0; i < categories.length; i++) {
-        updatedCategories.add(categories[i]);
-        // Add Favorites after the first top-level category (Japanese)
         if (i == 0 && categories[i].parentId == null) {
-          updatedCategories.add(favoritesCategory);
+          // This is the Japanese category - add Favorites as its first child
+          final japaneseCategory = categories[i];
+          final updatedChildren = <Category>[];
+          updatedChildren.add(favoritesCategory);
+          if (japaneseCategory.children != null) {
+            updatedChildren.addAll(japaneseCategory.children!);
+          }
+          
+          // Create updated Japanese category with Favorites as first child
+          final updatedJapanese = Category(
+            id: japaneseCategory.id,
+            name: japaneseCategory.name,
+            description: japaneseCategory.description,
+            parentId: japaneseCategory.parentId,
+            sortOrder: japaneseCategory.sortOrder,
+            hasChildren: true,
+            isCardCategory: japaneseCategory.isCardCategory,
+            cardCount: japaneseCategory.cardCount,
+            fullPath: japaneseCategory.fullPath,
+            children: updatedChildren,
+          );
+          updatedCategories.add(updatedJapanese);
+        } else {
+          updatedCategories.add(categories[i]);
         }
       }
       
@@ -586,33 +559,8 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     }
   }
 
-  Future<void> _loadReviewDecks() async {
-    try {
-      final decks = await _getReviewDecks();
-      setState(() {
-        _reviewDecks = decks;
-      });
-    } catch (e) {
-      // Handle error
-    }
-  }
 
-  Future<List<ReviewDeck>> _getReviewDecks() async {
-    // This should be implemented based on your existing review deck logic
-    return [];
-  }
 
-  void _openReviewScreen(ReviewDeck deck) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => ReviewScreen(
-          databaseService: widget.databaseService,
-          categoryId: deck.categoryId,
-          categoryName: deck.name,
-        ),
-      ),
-    );
-  }
 
 }
 

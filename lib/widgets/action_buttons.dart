@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 import 'text_with_background.dart';
 
 class ActionButtons extends StatelessWidget {
@@ -15,6 +15,7 @@ class ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appTheme = context.appTheme;
     return Container(
       padding: EdgeInsets.symmetric(
         vertical: 8, 
@@ -60,7 +61,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final appTheme = context.appTheme;
     
     return Column(
       children: [
@@ -68,11 +69,11 @@ class _ActionButton extends StatelessWidget {
           width: AppConstants.getButtonSize(context),
           height: AppConstants.getButtonSize(context),
           decoration: BoxDecoration(
-            color: isEnabled ? colors.actionButtonBackground : colors.actionButtonBackground.withValues(alpha: AppConstants.disabledButtonOpacity),
+            color: isEnabled ? appTheme.actionButtonBackground : appTheme.actionButtonBackground.withValues(alpha: AppConstants.disabledButtonOpacity),
             borderRadius: BorderRadius.circular(AppConstants.actionButtonBorderRadius),
             boxShadow: [
               BoxShadow(
-                color: colors.cardShadow,
+                color: appTheme.cardShadow,
                 blurRadius: AppConstants.actionButtonShadowBlur,
                 offset: Offset(0, AppConstants.actionButtonShadowOffset),
                 spreadRadius: AppConstants.actionButtonShadowSpread,
@@ -80,7 +81,7 @@ class _ActionButton extends StatelessWidget {
             ],
           ),
           child: IconButton(
-            icon: Icon(icon, color: colors.actionButtonText),
+            icon: Icon(icon, color: appTheme.actionButtonText),
             onPressed: isEnabled ? onPressed : null,
           ),
         ),
@@ -89,7 +90,7 @@ class _ActionButton extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: AppConstants.actionButtonLabelSize,
-            color: colors.actionButtonLabelText,
+            color: appTheme.actionButtonLabelText,
             fontWeight: AppConstants.actionButtonWeight,
           ),
           textAlign: TextAlign.center,

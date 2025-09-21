@@ -378,7 +378,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   /// Build categories list
   Widget _buildCategoriesList() {
     final theme = Theme.of(context);
-    final appTheme = context.appTheme;
     return RefreshIndicator(
       onRefresh: _loadCategories,
       color: theme.primaryColor,

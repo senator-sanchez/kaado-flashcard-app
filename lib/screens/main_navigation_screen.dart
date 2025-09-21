@@ -6,7 +6,6 @@ import 'home_screen.dart';
 import 'library_screen.dart';
 
 // Project imports - Constants
-import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_strings.dart';
 
@@ -36,7 +35,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
 
     return Scaffold(

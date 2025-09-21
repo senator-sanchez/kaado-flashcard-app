@@ -11,11 +11,7 @@ import '../services/database_service.dart';
 // Project imports - Utils
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 import '../utils/constants.dart';
-
-// Project imports - Constants
-import '../constants/app_sizes.dart';
 
 // Project imports - Constants
 
@@ -376,7 +372,6 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   /// Build cards list
   Widget _buildCardsList() {
     final theme = Theme.of(context);
-    final appTheme = context.appTheme;
     return RefreshIndicator(
       onRefresh: _loadCards,
       color: theme.primaryColor,

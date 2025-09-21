@@ -22,6 +22,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.secondaryIcon,
     required this.topTextBackgroundColor,
     required this.cardShadow,
+    required this.actionButtonText,
+    required this.actionButtonLabelText,
   });
 
   final Color cardBackground;
@@ -43,6 +45,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color secondaryIcon;
   final Color topTextBackgroundColor;
   final Color cardShadow;
+  final Color actionButtonText;
+  final Color actionButtonLabelText;
 
   @override
   AppThemeExtension copyWith({
@@ -65,6 +69,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? secondaryIcon,
     Color? topTextBackgroundColor,
     Color? cardShadow,
+    Color? actionButtonText,
+    Color? actionButtonLabelText,
   }) {
     return AppThemeExtension(
       cardBackground: cardBackground ?? this.cardBackground,
@@ -86,6 +92,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       secondaryIcon: secondaryIcon ?? this.secondaryIcon,
       topTextBackgroundColor: topTextBackgroundColor ?? this.topTextBackgroundColor,
       cardShadow: cardShadow ?? this.cardShadow,
+      actionButtonText: actionButtonText ?? this.actionButtonText,
+      actionButtonLabelText: actionButtonLabelText ?? this.actionButtonLabelText,
     );
   }
 
@@ -114,6 +122,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       secondaryIcon: Color.lerp(secondaryIcon, other.secondaryIcon, t)!,
       topTextBackgroundColor: Color.lerp(topTextBackgroundColor, other.topTextBackgroundColor, t)!,
       cardShadow: Color.lerp(cardShadow, other.cardShadow, t)!,
+      actionButtonText: Color.lerp(actionButtonText, other.actionButtonText, t)!,
+      actionButtonLabelText: Color.lerp(actionButtonLabelText, other.actionButtonLabelText, t)!,
     );
   }
 }
@@ -155,6 +165,8 @@ class AppTheme {
         secondaryIcon: Color(0xFF757575),
         topTextBackgroundColor: Color(0xFFE0E0E0),
         cardShadow: Color(0x1A000000),
+        actionButtonText: Colors.white,
+        actionButtonLabelText: Colors.black87,
       );
 
     return ThemeData(
@@ -251,6 +263,8 @@ class AppTheme {
         secondaryIcon: Color(0xFFB0B0B0),
         topTextBackgroundColor: Color(0xFF424242),
         cardShadow: Color(0x33000000),
+        actionButtonText: Colors.white,
+        actionButtonLabelText: Colors.white,
       );
 
     return ThemeData(

@@ -4,7 +4,6 @@
 /// Allows users to personalize their learning experience based on their preferences
 /// and learning style.
 
-
 /// User-customizable settings for spaced repetition
 class SpacedRepetitionSettings {
   // === Interval Settings ===

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/background_photo_service.dart';
 import '../utils/app_theme.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 
 /// Dialog for selecting background images from assets/backgrounds/
@@ -25,7 +23,6 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final defaultBackgrounds = _backgroundPhotoService.defaultBackgrounds;
 
@@ -178,7 +175,6 @@ class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
     required bool isSelected,
     required BuildContext context,
   }) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     final fileName = assetPath.split('/').last.split('.').first;
     final displayName = fileName.replaceAll('_', ' ').toUpperCase();

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/card_display_settings.dart';
 import '../services/card_display_service.dart';
-import '../utils/theme_colors.dart';
+import '../utils/app_theme.dart';
 
 /// Dialog for configuring card display settings
 class CardDisplaySettingsDialog extends StatefulWidget {
@@ -23,14 +23,14 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = ThemeColors.instance;
+    final appTheme = context.appTheme;
 
     return AlertDialog(
-      backgroundColor: colors.surface,
+      backgroundColor: appTheme.surface,
       title: Text(
         'Card Display Settings',
         style: TextStyle(
-          color: colors.primaryText,
+          color: appTheme.primaryText,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -43,7 +43,7 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
             Text(
               'Front of Card',
               style: TextStyle(
-                color: colors.primaryText,
+                color: appTheme.primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -61,7 +61,7 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
             Text(
               'Back of Card (check all that apply)',
               style: TextStyle(
-                color: colors.primaryText,
+                color: appTheme.primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -91,7 +91,7 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
             'Cancel',
-            style: TextStyle(color: colors.secondaryText),
+            style: TextStyle(color: appTheme.secondaryText),
           ),
         ),
         TextButton(
@@ -105,7 +105,7 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
           child: Text(
             'Save',
             style: TextStyle(
-              color: colors.primaryBlue,
+              color: appTheme.primaryBlue,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -119,16 +119,16 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
     CardDisplayType selectedType,
     ValueChanged<CardDisplayType?> onChanged,
   ) {
-    final colors = ThemeColors.instance;
+    final appTheme = context.appTheme;
     final isSelected = type == selectedType;
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected ? colors.primaryBlue.withValues(alpha: 0.1) : colors.surface,
+        color: isSelected ? appTheme.primaryBlue.withValues(alpha: 0.1) : appTheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected ? colors.primaryBlue : colors.divider,
+          color: isSelected ? appTheme.primaryBlue : appTheme.divider,
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -139,18 +139,18 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
         title: Text(
           type.displayName,
           style: TextStyle(
-            color: colors.primaryText,
+            color: appTheme.primaryText,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
         subtitle: Text(
           type.description,
           style: TextStyle(
-            color: colors.secondaryText,
+            color: appTheme.secondaryText,
             fontSize: 12,
           ),
         ),
-        activeColor: colors.primaryBlue,
+        activeColor: appTheme.primaryBlue,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
@@ -162,19 +162,19 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
     ValueChanged<bool?>? onChanged,
     {bool isDisabled = false}
   ) {
-    final colors = ThemeColors.instance;
+    final appTheme = context.appTheme;
 
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         color: isDisabled 
-          ? colors.surface.withValues(alpha: 0.5)
-          : isChecked ? colors.primaryBlue.withValues(alpha: 0.1) : colors.surface,
+          ? appTheme.surface.withValues(alpha: 0.5)
+          : isChecked ? appTheme.primaryBlue.withValues(alpha: 0.1) : appTheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDisabled 
-            ? colors.divider.withValues(alpha: 0.5)
-            : isChecked ? colors.primaryBlue : colors.divider,
+            ? appTheme.divider.withValues(alpha: 0.5)
+            : isChecked ? appTheme.primaryBlue : appTheme.divider,
           width: isChecked ? 2 : 1,
         ),
       ),
@@ -184,18 +184,18 @@ class _CardDisplaySettingsDialogState extends State<CardDisplaySettingsDialog> {
         title: Text(
           type.displayName,
           style: TextStyle(
-            color: isDisabled ? colors.secondaryText.withValues(alpha: 0.5) : colors.primaryText,
+            color: isDisabled ? appTheme.secondaryText.withValues(alpha: 0.5) : appTheme.primaryText,
             fontWeight: isChecked ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
         subtitle: Text(
           isDisabled ? 'Same as front display' : type.description,
           style: TextStyle(
-            color: isDisabled ? colors.secondaryText.withValues(alpha: 0.5) : colors.secondaryText,
+            color: isDisabled ? appTheme.secondaryText.withValues(alpha: 0.5) : appTheme.secondaryText,
             fontSize: 12,
           ),
         ),
-        activeColor: colors.primaryBlue,
+        activeColor: appTheme.primaryBlue,
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );

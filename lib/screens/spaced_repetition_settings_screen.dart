@@ -11,8 +11,6 @@ import '../models/spaced_repetition_settings.dart';
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 import '../utils/constants.dart';
 
 class SpacedRepetitionSettingsScreen extends StatefulWidget {
@@ -313,7 +311,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
 
   Widget _buildAdvancedSettingsSection() {
     final theme = Theme.of(context);
-    final appTheme = context.appTheme;
     return _buildSection(
       title: 'Advanced Settings',
       subtitle: 'Fine-tune the spaced repetition algorithm',
@@ -353,7 +350,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
     required String subtitle,
     required Widget child,
   }) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     return Container(
       padding: EdgeInsets.all(AppConstants.cardPadding),
@@ -531,7 +527,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
   }
 
   void _saveSettings() {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
     if (_settings.isValid()) {
@@ -557,7 +552,6 @@ class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSetting
 
   /// Show dialog when user tries to navigate away with unsaved changes
   void _showUnsavedChangesDialog() {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
     showDialog(

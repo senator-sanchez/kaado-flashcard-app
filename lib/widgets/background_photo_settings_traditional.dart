@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/background_photo_service.dart';
 import '../services/theme_service.dart';
+import '../services/app_logger.dart';
 import '../utils/app_theme.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
 import 'background_selector_dialog.dart';
 
 /// Widget for managing background photo settings (Traditional State Management)
@@ -263,7 +262,7 @@ class _BackgroundPhotoSettingsTraditionalState
 
   Future<void> _pickFromGallery() async {
     try {
-      print('DEBUG: Starting _pickFromGallery');
+      AppLogger.info('Starting _pickFromGallery');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Starting image picker...'),
@@ -272,9 +271,9 @@ class _BackgroundPhotoSettingsTraditionalState
       );
       
       final success = await _backgroundPhotoService.pickBackgroundPhoto();
-      print('DEBUG: pickBackgroundPhoto returned: $success');
+      AppLogger.info('pickBackgroundPhoto returned: $success');
 
-      if (success) {
+      if (success && mounted) {
         // Background photo updated from gallery
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -286,7 +285,7 @@ class _BackgroundPhotoSettingsTraditionalState
         _showErrorMessage('Failed to pick photo from gallery');
       }
     } catch (e) {
-      print('DEBUG: Error in _pickFromGallery: $e');
+      AppLogger.error('Error in _pickFromGallery', e);
       _showErrorMessage('Error picking photo: $e');
     }
   }
