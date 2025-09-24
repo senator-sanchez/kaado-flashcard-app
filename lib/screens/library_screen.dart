@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 // Project imports - Models
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 
 // Project imports - Services
 import '../services/database_service.dart';
@@ -39,7 +39,7 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   final DatabaseService _databaseService = DatabaseService();
-  List<Category> _categories = [];
+  List<app_models.Category> _categories = [];
   bool _isLoading = true;
   String _searchQuery = '';
 
@@ -72,7 +72,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Filter categories based on search query
-  List<Category> get _filteredCategories {
+  List<app_models.Category> get _filteredCategories {
     if (_searchQuery.isEmpty) return _getAllCategories();
     
     return _getAllCategories().where((category) {
@@ -82,10 +82,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Get all categories in a flat list (including nested categories)
-  List<Category> _getAllCategories() {
-    List<Category> allCategories = [];
+  List<app_models.Category> _getAllCategories() {
+    List<app_models.Category> allCategories = [];
     
-    void addCategoryAndChildren(Category category) {
+    void addCategoryAndChildren(app_models.Category category) {
       allCategories.add(category);
       if (category.children != null) {
         for (final child in category.children!) {
@@ -102,7 +102,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Filter categories to show only meaningful ones (with content or meaningful children)
-  List<Category> _getFilteredCategories() {
+  List<app_models.Category> _getFilteredCategories() {
     if (_searchQuery.isEmpty) {
       return _filterCategoriesWithContent(_categories);
     }
@@ -115,12 +115,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Filter categories to only show those with content or meaningful children
-  List<Category> _filterCategoriesWithContent(List<Category> categories) {
-    List<Category> filtered = [];
+  List<app_models.Category> _filterCategoriesWithContent(List<app_models.Category> categories) {
+    List<app_models.Category> filtered = [];
     
     for (final category in categories) {
       if (_hasContentOrMeaningfulChildren(category)) {
-        final filteredCategory = Category(
+        final filteredCategory = app_models.Category(
           id: category.id,
           name: category.name,
           description: category.description,
@@ -142,7 +142,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Check if a category has content or meaningful children
-  bool _hasContentOrMeaningfulChildren(Category category) {
+  bool _hasContentOrMeaningfulChildren(app_models.Category category) {
     // If it's a card category with cards, show it
     if (category.isCardCategory && category.cardCount > 0) {
       return true;
@@ -161,7 +161,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Navigate to category detail screen
-  void _navigateToCategory(Category category) {
+  void _navigateToCategory(app_models.Category category) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => CategoryDetailScreen(
@@ -397,7 +397,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   /// Build category tile with the same styling as navigation drawer
-  Widget _buildCategoryTile(Category category, ThemeData theme, AppThemeExtension appTheme) {
+  Widget _buildCategoryTile(app_models.Category category, ThemeData theme, AppThemeExtension appTheme) {
     // If it has children, show as ExpansionTile
     if (category.children != null && category.children!.isNotEmpty) {
       return ExpansionTile(

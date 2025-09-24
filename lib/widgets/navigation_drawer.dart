@@ -6,12 +6,13 @@ import '../constants/app_sizes.dart';
 import '../constants/app_strings.dart';
 
 // Project imports - Models
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 
 // Project imports - Services
 import '../services/database_service.dart';
 import '../services/spaced_repetition_service.dart';
 import '../services/theme_service.dart';
+import '../services/app_logger.dart';
 
 // Project imports - Screens
 import '../screens/spaced_repetition_settings_screen.dart';
@@ -48,7 +49,7 @@ enum DrawerView { main, cards, review, settings }
 
 class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   DrawerView _currentView = DrawerView.main;
-  List<Category> _categories = [];
+  List<app_models.Category> _categories = [];
   bool _isLoading = false;
 
   @override
@@ -155,8 +156,8 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
         children: [
         // Main navigation items
           DrawerTile(
-            title: 'Cards',
-            subtitle: 'Browse and select flashcard categories',
+            title: 'Decks',
+            subtitle: 'Browse and select flashcard decks',
             icon: Icons.style,
             onTap: () {
             widget.onCloseFab?.call();
@@ -212,67 +213,87 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     );
   }
 
-  List<Widget> _buildCategoryList(List<Category> categories, ThemeData theme, AppThemeExtension appTheme) {
+  List<Widget> _buildCategoryList(List<app_models.Category> categories, ThemeData theme, AppThemeExtension appTheme) {
+    if (categories.isEmpty) {
+      return [
+        ListTile(
+          title: Text('No decks found'),
+          subtitle: Text('Check database connection'),
+        ),
+      ];
+    }
+    
     return categories.map((category) {
       return _buildCategoryTile(category, theme, appTheme);
     }).toList();
   }
 
-  Widget _buildCategoryTile(Category category, ThemeData theme, AppThemeExtension appTheme) {
-    // If it's a bottom-level category (has cards), show as ListTile
+  Widget _buildCategoryTile(app_models.Category category, ThemeData theme, AppThemeExtension appTheme) {
+    // If it's a bottom-level category (has cards), show as custom tile
     if (category.isCardCategory) {
-      return ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(0),
-        ),
-        tileColor: Colors.transparent,
-        leading: category.id == -1 // Special handling for Favorites category
-            ? Icon(
-                Icons.star,
-                color: Colors.amber,
-                size: 24,
-              )
-            : null,
-        title: Row(
-              children: [
-            Expanded(
-              child: Text(
-                category.name,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: appTheme.primaryText,
-                ),
-              ),
-            ),
-            if (category.cardCount > 0)
-              Container(
-                margin: EdgeInsets.only(left: AppSizes.spacingSmall),
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSizes.spacingSmall,
-                  vertical: AppSizes.spacingXSmall,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.primaryColor,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
-                ),
-                child: Text(
-                  '${category.cardCount}',
-                  style: TextStyle(
-                    color: appTheme.buttonTextOnColored,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
-        ),
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           widget.onCategorySelected?.call(category.id);
           Navigator.of(context).pop();
-      },
-    );
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Leading icon (star for favorites, or empty space)
+              SizedBox(
+                width: 24,
+                child: category.name.toLowerCase() == 'favorites'
+                    ? Icon(
+                        Icons.star,
+                        color: Colors.amber,
+                        size: 24,
+                      )
+                    : null,
+              ),
+              SizedBox(width: 16),
+              // Title and card count
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        category.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: appTheme.primaryText,
+                        ),
+                      ),
+                    ),
+                    if (category.cardCount > 0)
+                      Container(
+                        margin: EdgeInsets.only(left: AppSizes.spacingSmall),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSizes.spacingSmall,
+                          vertical: AppSizes.spacingXSmall,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.primaryColor,
+                          borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                        ),
+                        child: Text(
+                          '${category.cardCount}',
+                          style: TextStyle(
+                            color: appTheme.buttonTextOnColored,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 
     // If it has children, show as ExpansionTile
@@ -540,73 +561,27 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     });
   }
 
-
-
-
   Future<void> _loadCategories() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      print('DEBUG: _loadCategories - Starting to load categories');
       final categories = await widget.databaseService.getCategoryTree();
-      
-      // Add Favorites category as a child under Japanese
-      final favoritesCount = await widget.databaseService.getFavoriteCardsCount();
-      final favoritesCategory = Category(
-        id: -1, // Special ID for favorites
-        name: 'Favorites',
-        description: 'Your favorite cards',
-        parentId: 1, // Assuming Japanese has ID 1
-        cardCount: favoritesCount,
-        isCardCategory: true,
-      );
-      
-      // Add Favorites as a child of Japanese
-      final updatedCategories = <Category>[];
-      for (int i = 0; i < categories.length; i++) {
-        if (i == 0 && categories[i].parentId == null) {
-          // This is the Japanese category - add Favorites as its first child
-          final japaneseCategory = categories[i];
-          final updatedChildren = <Category>[];
-          updatedChildren.add(favoritesCategory);
-          if (japaneseCategory.children != null) {
-            updatedChildren.addAll(japaneseCategory.children!);
-          }
-          
-          // Create updated Japanese category with Favorites as first child
-          final updatedJapanese = Category(
-            id: japaneseCategory.id,
-            name: japaneseCategory.name,
-            description: japaneseCategory.description,
-            parentId: japaneseCategory.parentId,
-            sortOrder: japaneseCategory.sortOrder,
-            hasChildren: true,
-            isCardCategory: japaneseCategory.isCardCategory,
-            cardCount: japaneseCategory.cardCount,
-            fullPath: japaneseCategory.fullPath,
-            children: updatedChildren,
-          );
-          updatedCategories.add(updatedJapanese);
-        } else {
-          updatedCategories.add(categories[i]);
-        }
-      }
+      print('DEBUG: _loadCategories - Loaded ${categories.length} categories');
       
       setState(() {
-        _categories = updatedCategories;
+        _categories = categories;
         _isLoading = false;
       });
     } catch (e) {
+      AppLogger.error('Error loading categories: $e');
       setState(() {
         _isLoading = false;
       });
     }
   }
-
-
-
-
 }
 
 class ReviewDeck {

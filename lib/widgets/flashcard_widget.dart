@@ -47,6 +47,7 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
     
     
     return GestureDetector(
+      behavior: HitTestBehavior.deferToChild,
       onTap: () {
         if (_showNotes) {
           setState(() {
@@ -202,15 +203,19 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
             right: 0,
             child: Center(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   widget.onToggleFavorite?.call();
                 },
-                child: Icon(
-                  widget.flashcard.isFavorite ? Icons.star : Icons.star_border,
-                  color: widget.flashcard.isFavorite 
-                      ? Colors.amber 
-                      : theme.primaryColor.withValues(alpha: 0.8),
-                  size: 28, // Larger star icon
+                child: Container(
+                  padding: EdgeInsets.all(8), // Larger tap area
+                  child: Icon(
+                    widget.flashcard.isFavorite ? Icons.star : Icons.star_border,
+                    color: widget.flashcard.isFavorite 
+                        ? Colors.amber 
+                        : theme.primaryColor.withValues(alpha: 0.8),
+                    size: 28, // Larger star icon
+                  ),
                 ),
               ),
             ),

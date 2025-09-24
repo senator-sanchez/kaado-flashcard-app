@@ -1,15 +1,23 @@
-/// Represents a Japanese language flashcard with kana, reading, and English translation
+import 'card.dart';
+import 'card_field.dart';
+
+/// Legacy Flashcard model for backward compatibility
+/// This wraps the new Card + CardField structure to maintain existing API
 class Flashcard {
   final int id;
   final String kana; // Japanese text (kanji, hiragana, katakana, or mixed)
   final String? hiragana; // Hiragana reading/pronunciation guide
   final String english; // English translation
   final String? romaji; // Romaji reading (optional)
-  final String? scriptType; // Type of Japanese script
+  final String? scriptType; // Type of Japanese script (legacy field)
   final String? notes; // Free text notes for the card
   final bool isFavorite; // Whether this card is marked as favorite
-  final int categoryId; // Category this card belongs to
-  final String? categoryName; // Name of the category (computed field)
+  final int categoryId; // Category/Deck this card belongs to
+  final String? categoryName; // Name of the category/deck (computed field)
+  
+  // New fields for compatibility with new schema
+  final Card? _card; // Internal Card object
+  final List<CardField>? _fields; // Internal CardField list
 
   Flashcard({
     required this.id,
@@ -22,9 +30,11 @@ class Flashcard {
     this.isFavorite = false,
     required this.categoryId,
     this.categoryName,
-  });
+    Card? card,
+    List<CardField>? fields,
+  }) : _card = card, _fields = fields;
 
-  /// Create a Flashcard from a database map
+  /// Create a Flashcard from a database map (legacy format)
   factory Flashcard.fromMap(Map<String, dynamic> map) {
     return Flashcard(
       id: map['id'] ?? map['card_id'] ?? 0,
@@ -35,12 +45,30 @@ class Flashcard {
       scriptType: map['script_type'],
       notes: map['notes'],
       isFavorite: (map['is_favorite'] ?? 0) == 1,
-      categoryId: map['category_id'] ?? 0,
-      categoryName: map['category_name'],
+      categoryId: map['category_id'] ?? map['deck_id'] ?? 0,
+      categoryName: map['category_name'] ?? map['deck_name'],
     );
   }
 
-  /// Convert Flashcard to a database map
+  /// Create a Flashcard from new Card + CardField structure
+  factory Flashcard.fromCard(Card card) {
+    return Flashcard(
+      id: card.id,
+      kana: card.getFieldValue('kana') ?? '',
+      hiragana: card.getFieldValue('hiragana'),
+      english: card.getFieldValue('english') ?? '',
+      romaji: card.getFieldValue('romaji'),
+      scriptType: null, // Legacy field, not used in new schema
+      notes: card.notes,
+      isFavorite: card.isFavorite,
+      categoryId: card.deckId,
+      categoryName: card.deckName,
+      card: card,
+      fields: card.fields,
+    );
+  }
+
+  /// Convert Flashcard to a database map (legacy format)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -52,9 +80,16 @@ class Flashcard {
       'notes': notes,
       'is_favorite': isFavorite ? 1 : 0,
       'category_id': categoryId,
-      // Note: category_name is a computed field, not a database column
+      'deck_id': categoryId, // Support both old and new column names
+      // Note: category_name/deck_name is a computed field, not a database column
     };
   }
+
+  /// Get the underlying Card object (if available)
+  Card? get card => _card;
+
+  /// Get the underlying CardField list (if available)
+  List<CardField>? get fields => _fields;
 
   /// Get the primary display text (kana)
   String get displayText => kana;

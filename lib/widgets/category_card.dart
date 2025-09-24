@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 // Project imports - Models
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
@@ -15,12 +15,12 @@ import '../constants/app_sizes.dart';
 /// A card widget for displaying category information
 /// 
 /// This widget provides:
-/// - Category name and description
+/// - app_models.Category name and description
 /// - Card count display
 /// - Edit and delete actions
 /// - Clean, modern design
 class CategoryCard extends StatelessWidget {
-  final Category category;
+  final app_models.Category category;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;

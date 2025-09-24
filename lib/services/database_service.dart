@@ -1,6 +1,7 @@
 // Dart imports
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 // Flutter imports
 import 'package:flutter/services.dart';
@@ -11,16 +12,19 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
 // Project imports - Models
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 import '../models/flashcard.dart';
 import '../models/incorrect_card.dart';
 import '../models/spaced_repetition.dart';
 import '../models/spaced_repetition_settings.dart';
-
-// Project imports - Services
+import '../models/deck.dart';
+import '../models/card.dart';
+import '../models/card_field.dart';
+import '../models/user_progress.dart';
+import 'app_logger.dart';
 
 /// Service for managing database operations with the Japanese language database
-/// Uses a pre-built SQLite database packaged with the app
+/// Uses the new migrated schema with Deck, Card+CardField, and UserProgress
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
@@ -35,845 +39,1066 @@ class DatabaseService {
     return _database!;
   }
 
-  /// Initialize the database by opening it directly from assets
+  /// Initialize the database using the migrated database file
   Future<Database> _initDatabase() async {
-    // Get the database path from assets
     final dbPath = await _getDatabasePath();
     
-    // Open the database file
     final db = await openDatabase(
       dbPath,
-      version: 1,
-      readOnly: false, // Allow writes for incorrect cards tracking
+      readOnly: false,
     );
     
     return db;
   }
 
-  /// Get the database path from assets (use database directly from assets)
+
+  /// Get the database path - use the database directly from assets
   Future<String> _getDatabasePath() async {
-    // Get the app's documents directory
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbPath = join(documentsDirectory.path, 'japanese.db');
     
-    // Check if database already exists in documents directory
+    print('DEBUG: _getDatabasePath - Documents directory: ${documentsDirectory.path}');
+    print('DEBUG: _getDatabasePath - Database path: $dbPath');
+    
+    // Copy database from assets to app documents directory
     final dbFile = File(dbPath);
-    if (!await dbFile.exists()) {
-      // Only copy from assets if database doesn't exist
-      final ByteData data = await rootBundle.load('database/japanese.db');
+    if (!dbFile.existsSync()) {
+      print('DEBUG: _getDatabasePath - Database file does not exist, copying from assets...');
+      AppLogger.info('Copying database from assets...');
+      try {
+        final ByteData data = await rootBundle.load('assets/database/japanese.db');
       await dbFile.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+        print('DEBUG: _getDatabasePath - Database copied successfully to: $dbPath');
+        AppLogger.info('Database copied to: $dbPath');
+      } catch (e) {
+        print('DEBUG: _getDatabasePath - Error copying database: $e');
+        AppLogger.error('Error copying database from assets: $e');
+        rethrow;
+      }
+    } else {
+      print('DEBUG: _getDatabasePath - Using existing database: $dbPath');
+      AppLogger.info('Using existing database: $dbPath');
     }
     
     return dbPath;
   }
 
-  // ===== CATEGORY OPERATIONS =====
+  // ===== DECK OPERATIONS =====
 
-  /// Get the complete category tree with hierarchical structure
-  /// Computes has_children, is_card_category, and card_count dynamically
-  Future<List<Category>> getCategoryTree() async {
+  /// Get the complete deck tree with hierarchical structure
+  Future<List<Deck>> getDeckTree() async {
+    try {
     final db = await database;
+    print('DEBUG: getDeckTree - Database path: ${db.path}');
     
-    // Get all categories with computed has_children and card_count
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
       SELECT 
-        c.id as category_id,
-        c.name,
-        c.parent_id,
-        c.sort_order,
+        d.id,
+        d.name,
+        d.language,
+        d.parent_id,
+        d.sort_order,
+        d.is_dirty,
+        d.updated_at,
         CASE 
-          WHEN EXISTS(SELECT 1 FROM Category child WHERE child.parent_id = c.id) 
+          WHEN EXISTS(SELECT 1 FROM Deck child WHERE child.parent_id = d.id) 
           THEN 1 
           ELSE 0 
         END as has_children,
-        CASE 
-          WHEN NOT EXISTS(SELECT 1 FROM Category child WHERE child.parent_id = c.id)
-              AND EXISTS(SELECT 1 FROM Card WHERE category_id = c.id)
-        THEN 1 
-          ELSE 0 
-        END as is_card_category,
-        CASE 
-          WHEN NOT EXISTS(SELECT 1 FROM Category child WHERE child.parent_id = c.id)
-          THEN (SELECT COUNT(*) FROM Card WHERE category_id = c.id)
-          ELSE 0
-        END as card_count
-      FROM Category c
+        (SELECT COUNT(*) FROM Card c WHERE c.deck_id = d.id) as card_count,
+        '' as full_path
+      FROM Deck d
       ORDER BY 
-        COALESCE(c.parent_id, 0) ASC,
-        c.sort_order ASC,
-        c.name ASC
+        d.parent_id NULLS FIRST,
+        d.sort_order,
+        d.name
     ''');
 
-    final List<Category> allCategories = List.generate(maps.length, (i) => Category.fromMap(maps[i]));
-    
-    // Build hierarchical structure
-    return _buildCategoryHierarchy(allCategories);
-  }
-
-  /// Build the hierarchical category structure from flat list
-  List<Category> _buildCategoryHierarchy(List<Category> allCategories) {
-    final Map<int, Category> categoryMap = {};
-    final List<Category> rootCategories = [];
-    
-    // Create a map of all categories by ID
-    for (final category in allCategories) {
-      categoryMap[category.id] = category;
-    }
-    
-    // Build parent-child relationships recursively
-    for (final category in allCategories) {
-      if (category.parentId == null) {
-        // This is a root category
-        rootCategories.add(category);
-        _buildChildrenRecursively(category, categoryMap);
+    print('DEBUG: getDeckTree - Query returned ${maps.length} decks');
+    if (maps.isNotEmpty) {
+      print('DEBUG: First few decks:');
+      for (int i = 0; i < math.min(5, maps.length); i++) {
+        print('DEBUG: Deck ${i}: id=${maps[i]['id']}, name=${maps[i]['name']}, parent_id=${maps[i]['parent_id']}');
       }
     }
-    
-    return rootCategories;
-  }
 
-  /// Recursively build children for a parent category
-  void _buildChildrenRecursively(Category parent, Map<int, Category> categoryMap) {
-    final List<Category> children = [];
-    
-    // Find all direct children of this parent
-    for (final category in categoryMap.values) {
-      if (category.parentId == parent.id) {
-        children.add(category);
-        // Recursively build children for this child
-        _buildChildrenRecursively(category, categoryMap);
+      final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
+      print('DEBUG: getDeckTree - Built ${allDecks.length} deck objects');
+      final result = _buildDeckHierarchy(allDecks);
+      print('DEBUG: getDeckTree - Final hierarchy has ${result.length} root decks');
+      return result;
+      } catch (e) {
+        print('DEBUG: getDeckTree - Error occurred: $e');
+        AppLogger.error('Error in getDeckTree: $e');
+        return [];
       }
-    }
-    
-    // Sort children by sort_order
-    children.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    
-    // Assign children to parent
-    if (children.isNotEmpty) {
-      parent.children = children;
-    }
   }
 
-  /// Get all categories
-  Future<List<Category>> getCategories() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'Category',
-      orderBy: 'name ASC',
-    );
-
-    return List.generate(maps.length, (i) {
-      return Category.fromMap(maps[i]);
-    });
-  }
-
-  /// Get categories by parent ID
-  Future<List<Category>> getCategoriesByParent(int? parentId) async {
-    final db = await database;
+  /// Build the hierarchical deck structure from flat list
+  List<Deck> _buildDeckHierarchy(List<Deck> allDecks) {
+    final Map<int, List<Deck>> childrenMap = {};
+    final List<Deck> rootDecks = [];
     
-    final List<Map<String, dynamic>> maps = await db.query(
-      'Category',
-      where: 'parent_id = ?',
-      whereArgs: [parentId],
-      orderBy: 'sort_order ASC',
-    );
-
-    return List.generate(maps.length, (i) => Category.fromMap(maps[i]));
-  }
-
-  /// Get a category by its ID
-  Future<Category?> getCategoryById(int id) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'Category',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-
-    if (maps.isNotEmpty) {
-      return Category.fromMap(maps.first);
-    }
-    return null;
-  }
-
-  // ===== FLASHCARD OPERATIONS =====
-
-  /// Get all flashcards for a specific category
-  Future<List<Flashcard>> getCardsByCategory(int categoryId) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT 
-        c.id as card_id,
-        c.kana,
-        c.hiragana,
-        c.english,
-        c.romaji,
-        c.script_type,
-        c.notes,
-        c.category_id,
-        cat.name as category_name
-      FROM Card c
-      INNER JOIN Category cat ON c.category_id = cat.id
-      WHERE c.category_id = ?
-      ORDER BY c.id
-    ''', [categoryId]);
-
-    final cards = List.generate(maps.length, (i) => Flashcard.fromMap(maps[i]));
-    
-    // Debug: Print card count and IDs to help identify duplication
-    // Loaded ${cards.length} cards for category $categoryId
-    
-    return cards;
-  }
-
-  /// Get a specific flashcard by ID
-  Future<Flashcard?> getCardById(int id) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'Card',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-
-    if (maps.isNotEmpty) {
-      return Flashcard.fromMap(maps.first);
-    }
-    return null;
-  }
-
-  /// Get the count of cards in a category
-  Future<int> getCardCount(int categoryId) async {
-    final db = await database;
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM Card WHERE category_id = ?',
-      [categoryId]
-    );
-    return result.first['count'] as int;
-  }
-
-  /// Close the database connection
-  Future<void> close() async {
-    final db = await database;
-    await db.close();
-    _database = null;
-  }
-
-  /// Force a fresh initialization of the database
-  /// This can help resolve database connection issues
-  Future<void> resetDatabase() async {
-    // Close existing database connection
-    if (_database != null) {
-      await _database!.close();
-      _database = null;
-    }
-    
-    // Force reinitialization
-    _database = await _initDatabase();
-  }
-
-  // ===== INCORRECT CARDS TRACKING =====
-
-  /// Mark a card as incorrect and add it to the review list
-  Future<void> markCardIncorrect(int cardId, int categoryId, String categoryName) async {
-    try {
-      final db = await database;
-      
-      // Check if card is already in incorrect list
-      final existing = await db.query(
-        'IncorrectCards',
-        where: 'card_id = ? AND category_id = ?',
-        whereArgs: [cardId, categoryId],
-      );
-      
-      if (existing.isNotEmpty) {
-        // Update existing record - increment count and update timestamp
-        await db.update(
-          'IncorrectCards',
-          {
-            'incorrect_count': (existing.first['incorrect_count'] as int) + 1,
-            'last_incorrect': DateTime.now().millisecondsSinceEpoch,
-            'is_reviewed': 0, // Reset reviewed status
-          },
-          where: 'card_id = ? AND category_id = ?',
-          whereArgs: [cardId, categoryId],
-        );
+    // Group decks by parent ID
+    for (final deck in allDecks) {
+      if (deck.parentId == null) {
+        rootDecks.add(deck);
       } else {
-        // Insert new record
-        await db.insert('IncorrectCards', {
-          'card_id': cardId,
-          'category_id': categoryId,
-          'category_name': categoryName,
-          'last_incorrect': DateTime.now().millisecondsSinceEpoch,
-          'incorrect_count': 1,
-          'is_reviewed': 0,
-        });
+        childrenMap.putIfAbsent(deck.parentId!, () => []).add(deck);
       }
-    } catch (e) {
-      rethrow;
     }
-  }
-
-  /// Mark a card as correct and remove it from the review list
-  Future<void> markCardCorrect(int cardId, int categoryId) async {
-    final db = await database;
     
-    await db.delete(
-      'IncorrectCards',
-      where: 'card_id = ? AND category_id = ?',
-      whereArgs: [cardId, categoryId],
-    );
+    // Build the hierarchy by creating new Deck objects with children
+    return _buildHierarchyRecursive(rootDecks, childrenMap);
   }
-
-  /// Mark a card as reviewed (but keep it in the list for tracking)
-  Future<void> markCardReviewed(int cardId, int categoryId) async {
-    final db = await database;
+  
+  /// Recursively build hierarchy with children
+  List<Deck> _buildHierarchyRecursive(List<Deck> decks, Map<int, List<Deck>> childrenMap) {
+    final List<Deck> result = [];
     
-    await db.update(
-      'IncorrectCards',
-      {
-        'is_reviewed': 1,
-        'last_reviewed': DateTime.now().millisecondsSinceEpoch,
-      },
-      where: 'card_id = ? AND category_id = ?',
-      whereArgs: [cardId, categoryId],
-    );
-  }
-
-  /// Get all incorrect cards for a specific category
-  Future<List<IncorrectCard>> getIncorrectCards(int categoryId) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'IncorrectCards',
-      where: 'category_id = ?',
-      whereArgs: [categoryId],
-      orderBy: 'last_incorrect DESC',
-    );
-
-    return List.generate(maps.length, (i) => IncorrectCard.fromMap(maps[i]));
-  }
-
-  /// Get flashcard objects for incorrect cards in a category
-  Future<List<Flashcard>> getIncorrectCardsForCategory(int categoryId) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.* FROM Card c
-      INNER JOIN IncorrectCards ic ON c.id = ic.card_id
-      WHERE c.category_id = ?
-      ORDER BY ic.last_incorrect DESC
-    ''', [categoryId]);
-
-    return List.generate(maps.length, (i) => Flashcard.fromMap(maps[i]));
-  }
-
-  /// Get all decks that have incorrect cards available for review
-  Future<List<ReviewDeck>> getReviewDecks() async {
-    try {
-      final db = await database;
+    for (final deck in decks) {
+      final children = childrenMap[deck.id] ?? [];
+      final childrenWithHierarchy = _buildHierarchyRecursive(children, childrenMap);
       
-      final List<Map<String, dynamic>> maps = await db.rawQuery('''
-        SELECT 
-          ic.category_id,
-          c.name as category_name,
-          (SELECT COUNT(*) FROM Card WHERE category_id = ic.category_id) as total_cards,
-          COUNT(ic.card_id) as incorrect_cards,
-          SUM(CASE WHEN ic.is_reviewed = 1 THEN 1 ELSE 0 END) as reviewed_cards,
-          MAX(ic.last_reviewed) as last_reviewed
-        FROM IncorrectCards ic
-        INNER JOIN Category c ON ic.category_id = c.id
-        GROUP BY ic.category_id, c.name
-        HAVING incorrect_cards > 0
-        ORDER BY incorrect_cards DESC, last_reviewed ASC
-      ''');
-
-      return List.generate(maps.length, (i) => ReviewDeck.fromMap(maps[i]));
-    } catch (e) {
-      return [];
+      final deckWithChildren = deck.copyWith(children: childrenWithHierarchy);
+      result.add(deckWithChildren);
     }
-  }
-
-  /// Get the total count of incorrect cards across all categories
-  Future<int> getTotalIncorrectCards() async {
-    final db = await database;
-    
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM IncorrectCards WHERE is_reviewed = 0'
-    );
-    
-    return result.first['count'] as int;
-  }
-
-  /// Clear all incorrect card records (for testing or reset purposes)
-  Future<void> clearIncorrectCards() async {
-    final db = await database;
-    await db.delete('IncorrectCards');
-  }
-
-  /// Clean up orphaned cards that no longer exist in the main Card table
-  Future<int> cleanupOrphanedCards() async {
-    final db = await database;
-    
-    // Delete cards from IncorrectCards that don't exist in the main Card table
-    final result = await db.rawDelete('''
-      DELETE FROM IncorrectCards 
-      WHERE card_id NOT IN (SELECT id FROM Card)
-    ''');
-    
-    return result; // Returns number of deleted records
-  }
-
-  // ===== SPACED REPETITION METHODS =====
-
-  /// Create or update a spaced repetition card
-  Future<void> upsertSpacedRepetitionCard(SpacedRepetitionCard card) async {
-    final db = await database;
-    
-    await db.insert(
-      'SpacedRepetition',
-      card.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  /// Get spaced repetition data for a specific card
-  Future<SpacedRepetitionCard?> getSpacedRepetitionCard(int cardId, int categoryId) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'SpacedRepetition',
-      where: 'card_id = ? AND category_id = ?',
-      whereArgs: [cardId, categoryId],
-    );
-
-    if (maps.isNotEmpty) {
-      return SpacedRepetitionCard.fromMap(maps.first);
-    }
-    return null;
-  }
-
-  /// Get all spaced repetition cards for a category
-  Future<List<SpacedRepetitionCard>> getSpacedRepetitionCardsForCategory(int categoryId) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'SpacedRepetition',
-      where: 'category_id = ?',
-      whereArgs: [categoryId],
-      orderBy: 'next_review ASC',
-    );
-
-    return List.generate(maps.length, (i) => SpacedRepetitionCard.fromMap(maps[i]));
-  }
-
-  /// Get cards due for review today
-  Future<List<SpacedRepetitionCard>> getCardsDueForReview() async {
-    final db = await database;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'SpacedRepetition',
-      where: 'next_review <= ?',
-      whereArgs: [now],
-      orderBy: 'next_review ASC',
-    );
-
-    return List.generate(maps.length, (i) => SpacedRepetitionCard.fromMap(maps[i]));
-  }
-
-  /// Get cards due for review in a specific category
-  Future<List<SpacedRepetitionCard>> getCardsDueForReviewInCategory(int categoryId) async {
-    final db = await database;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'SpacedRepetition',
-      where: 'category_id = ? AND next_review <= ?',
-      whereArgs: [categoryId, now],
-      orderBy: 'next_review ASC',
-    );
-
-    return List.generate(maps.length, (i) => SpacedRepetitionCard.fromMap(maps[i]));
-  }
-
-  /// Get new cards (never reviewed) for a category
-  Future<List<SpacedRepetitionCard>> getNewCardsForCategory(int categoryId, {int limit = 20}) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.query(
-      'SpacedRepetition',
-      where: 'category_id = ? AND repetitions = 0',
-      whereArgs: [categoryId],
-      orderBy: 'created_at ASC',
-      limit: limit,
-    );
-
-    return List.generate(maps.length, (i) => SpacedRepetitionCard.fromMap(maps[i]));
-  }
-
-  /// Get review statistics for a category
-  Future<Map<String, int>> getReviewStatsForCategory(int categoryId) async {
-    final db = await database;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    
-    // Get total cards in category
-    final totalResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM Card WHERE category_id = ?',
-      [categoryId]
-    );
-    final totalCards = totalResult.first['count'] as int;
-
-    // Get new cards (never reviewed)
-    final newResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM SpacedRepetition WHERE category_id = ? AND repetitions = 0',
-      [categoryId]
-    );
-    final newCards = newResult.first['count'] as int;
-
-    // Get cards due for review
-    final reviewResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM SpacedRepetition WHERE category_id = ? AND next_review <= ? AND repetitions > 0',
-      [categoryId, now]
-    );
-    final reviewCards = reviewResult.first['count'] as int;
-
-    // Get overdue cards
-    final overdueResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM SpacedRepetition WHERE category_id = ? AND next_review < ? AND repetitions > 0',
-      [categoryId, now]
-    );
-    final overdueCards = overdueResult.first['count'] as int;
-
-    return {
-      'total': totalCards,
-      'new': newCards,
-      'review': reviewCards,
-      'overdue': overdueCards,
-    };
-  }
-
-  /// Get overall review statistics
-  Future<Map<String, int>> getOverallReviewStats() async {
-    final db = await database;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    
-    // Get total cards
-    final totalResult = await db.rawQuery('SELECT COUNT(*) as count FROM Card');
-    final totalCards = totalResult.first['count'] as int;
-
-    // Get new cards
-    final newResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM SpacedRepetition WHERE repetitions = 0'
-    );
-    final newCards = newResult.first['count'] as int;
-
-    // Get cards due for review
-    final reviewResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM SpacedRepetition WHERE next_review <= ? AND repetitions > 0',
-      [now]
-    );
-    final reviewCards = reviewResult.first['count'] as int;
-
-    // Get overdue cards
-    final overdueResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM SpacedRepetition WHERE next_review < ? AND repetitions > 0',
-      [now]
-    );
-    final overdueCards = overdueResult.first['count'] as int;
-
-    return {
-      'total': totalCards,
-      'new': newCards,
-      'review': reviewCards,
-      'overdue': overdueCards,
-    };
-  }
-
-  /// Delete spaced repetition data for a card
-  Future<void> deleteSpacedRepetitionCard(int cardId, int categoryId) async {
-    final db = await database;
-    
-    await db.delete(
-      'SpacedRepetition',
-      where: 'card_id = ? AND category_id = ?',
-      whereArgs: [cardId, categoryId],
-    );
-  }
-
-  /// Clear all spaced repetition data (for testing or reset purposes)
-  Future<void> clearSpacedRepetitionData() async {
-    final db = await database;
-    await db.delete('SpacedRepetition');
-  }
-
-  /// Clean up orphaned spaced repetition cards
-  Future<int> cleanupOrphanedSpacedRepetitionCards() async {
-    final db = await database;
-    
-    final result = await db.rawDelete('''
-      DELETE FROM SpacedRepetition 
-      WHERE card_id NOT IN (SELECT id FROM Card)
-    ''');
     
     return result;
   }
 
-  // ===== SPACED REPETITION SETTINGS METHODS =====
+  // ===== CARD OPERATIONS =====
 
-  /// Save spaced repetition settings to database
-  Future<void> saveSpacedRepetitionSettings(SpacedRepetitionSettings settings) async {
+  /// Get cards with their fields for a specific deck
+  Future<List<Card>> getCardsWithFieldsByDeck(int deckId) async {
+    print('DEBUG: getCardsWithFieldsByDeck - Loading cards for deck ID: $deckId');
     final db = await database;
     
-    // Use a simple key-value approach for settings
-    final settingsMap = settings.toMap();
-    
-    // Clear existing settings
-    await db.delete('Settings', where: 'key LIKE ?', whereArgs: ['spaced_repetition_%']);
-    
-    // Insert new settings
-    for (final entry in settingsMap.entries) {
-      await db.insert('Settings', {
-        'key': 'spaced_repetition_${entry.key}',
-        'value': entry.value.toString(),
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-  }
+    // OPTIMIZED: Single query instead of N+1 queries
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT 
+        c.id,
+        c.deck_id,
+        c.notes,
+        c.is_dirty,
+        c.updated_at,
+        d.name as deck_name,
+        cf.id as field_id,
+        cf.field_definition_id,
+        cf.field_value,
+        cf.is_dirty as field_is_dirty,
+        cf.updated_at as field_updated_at,
+        fd.field_type,
+        fd.is_front,
+        fd.is_back,
+        fd.sort_order
+      FROM Card c
+      INNER JOIN Deck d ON c.deck_id = d.id
+      LEFT JOIN CardField cf ON c.id = cf.card_id
+      LEFT JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
+      WHERE c.deck_id = ?
+      ORDER BY c.id, fd.sort_order
+    ''', [deckId]);
 
-  /// Load spaced repetition settings from database
-  Future<SpacedRepetitionSettings> loadSpacedRepetitionSettings() async {
-    final db = await database;
+    // Group results by card to avoid N+1 problem
+    final Map<int, Map<String, dynamic>> cardMap = {};
+    final Map<int, List<CardField>> cardFields = {};
     
-    final results = await db.query(
-      'Settings',
-      where: 'key LIKE ?',
-      whereArgs: ['spaced_repetition_%'],
-    );
-    
-    if (results.isEmpty) {
-      return SpacedRepetitionPresets.standard;
-    }
-    
-    final settingsMap = <String, dynamic>{};
-    for (final row in results) {
-      final key = row['key'] as String;
-      final value = row['value'] as String;
-      final cleanKey = key.replaceFirst('spaced_repetition_', '');
+    for (final map in maps) {
+      final cardId = map['id'] as int;
       
-      // Convert string values back to appropriate types
-      if (cleanKey.contains('ease_factor') || cleanKey.contains('decrease') || cleanKey.contains('increase')) {
-        settingsMap[cleanKey] = double.parse(value);
-      } else if (cleanKey == 'review_order') {
-        settingsMap[cleanKey] = int.parse(value);
-      } else if (cleanKey == 'mix_new_and_review' || cleanKey.contains('enable_')) {
-        settingsMap[cleanKey] = value == '1';
-      } else {
-        settingsMap[cleanKey] = int.parse(value);
+      // Store card data (only once per card)
+      if (!cardMap.containsKey(cardId)) {
+        cardMap[cardId] = {
+          'id': map['id'],
+          'deck_id': map['deck_id'],
+          'notes': map['notes'],
+          'is_dirty': map['is_dirty'],
+          'updated_at': map['updated_at'],
+          'deck_name': map['deck_name'],
+        };
+        cardFields[cardId] = [];
+      }
+      
+      // Add field data if it exists
+      if (map['field_id'] != null) {
+        cardFields[cardId]!.add(CardField.fromMap({
+          'id': map['field_id'],
+          'card_id': map['id'],
+          'field_definition_id': map['field_definition_id'],
+          'field_value': map['field_value'],
+          'is_dirty': map['field_is_dirty'],
+          'updated_at': map['field_updated_at'],
+          'field_type': map['field_type'],
+          'is_front': map['is_front'],
+          'is_back': map['is_back'],
+        }));
       }
     }
     
-    return SpacedRepetitionSettings.fromMap(settingsMap);
+    // Build final card list
+    final List<Card> cards = [];
+    for (final entry in cardMap.entries) {
+      final cardId = entry.key;
+      final cardData = entry.value;
+      final fields = cardFields[cardId] ?? [];
+      cards.add(Card.fromMap(cardData).copyWith(fields: fields));
+    }
+    
+    return cards;
   }
 
-  // ===== CATEGORY MANAGEMENT METHODS =====
-
-  /// Get all categories
-  Future<List<Category>> getAllCategories() async {
+  /// Get a single card with its fields by ID - OPTIMIZED with single query
+  Future<Card?> getCardWithFieldsById(int cardId) async {
     final db = await database;
     
-    final results = await db.query(
-      'Category',
-      orderBy: 'name ASC',
-    );
+    // OPTIMIZED: Single query instead of two separate queries
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT 
+        c.id,
+        c.deck_id,
+        c.notes,
+        c.is_dirty,
+        c.updated_at,
+        d.name as deck_name,
+        cf.id as field_id,
+        cf.field_definition_id,
+        cf.field_value,
+        cf.is_dirty as field_is_dirty,
+        cf.updated_at as field_updated_at,
+        fd.field_type,
+        fd.is_front,
+        fd.is_back,
+        fd.sort_order
+      FROM Card c
+      INNER JOIN Deck d ON c.deck_id = d.id
+      LEFT JOIN CardField cf ON c.id = cf.card_id
+      LEFT JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
+      WHERE c.id = ?
+      ORDER BY fd.sort_order
+    ''', [cardId]);
     
-    return results.map((map) => Category.fromMap(map)).toList();
-  }
-
-  /// Add a new category
-  Future<int> addCategory(String name, String? description) async {
-    final db = await database;
+    if (maps.isEmpty) return null;
     
-    final categoryMap = {
-      'name': name,
-      'description': description,
+    // Group fields for this card
+    final List<CardField> fields = [];
+    final Map<String, dynamic> cardData = {
+      'id': maps.first['id'],
+      'deck_id': maps.first['deck_id'],
+      'notes': maps.first['notes'],
+      'is_dirty': maps.first['is_dirty'],
+      'updated_at': maps.first['updated_at'],
+      'deck_name': maps.first['deck_name'],
     };
     
-    return await db.insert('Category', categoryMap);
+    for (final map in maps) {
+      if (map['field_id'] != null) {
+        fields.add(CardField.fromMap({
+          'id': map['field_id'],
+          'card_id': map['id'],
+          'field_definition_id': map['field_definition_id'],
+          'field_value': map['field_value'],
+          'is_dirty': map['field_is_dirty'],
+          'updated_at': map['field_updated_at'],
+          'field_type': map['field_type'],
+          'is_front': map['is_front'],
+          'is_back': map['is_back'],
+        }));
+      }
+    }
+    
+    return Card.fromMap(cardData).copyWith(fields: fields);
   }
 
-  /// Update an existing category
-  Future<void> updateCategory(Category category) async {
+  /// Add a new card with its fields
+  Future<int> addCardWithFields(int deckId, Map<String, String> fieldValues, {String? notes, bool isFavorite = false}) async {
     final db = await database;
+    
+    return await db.transaction((txn) async {
+      // Insert card
+      final cardId = await txn.insert('Card', {
+        'deck_id': deckId,
+        'notes': notes,
+        'is_dirty': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      
+      // Get field definitions for this deck
+      final fieldDefs = await txn.rawQuery('''
+        SELECT id, field_type FROM FieldDefinition 
+        WHERE deck_id = ? 
+        ORDER BY sort_order
+      ''', [deckId]);
+      
+      // Insert card fields
+      for (final fieldDef in fieldDefs) {
+        final fieldType = fieldDef['field_type'] as String;
+        final fieldValue = fieldValues[fieldType] ?? '';
+        
+        await txn.insert('CardField', {
+          'card_id': cardId,
+          'field_definition_id': fieldDef['id'],
+          'field_value': fieldValue,
+          'is_dirty': 1,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+      
+      // Card count is now calculated dynamically, no need to update
+      
+      return cardId;
+    });
+  }
+
+  /// Update a card with its fields
+  Future<void> updateCardWithFields(int cardId, Map<String, String> fieldValues, {String? notes, bool? isFavorite}) async {
+    final db = await database;
+      
+    await db.transaction((txn) async {
+      // Update card metadata
+      final cardUpdates = <String, dynamic>{
+        'is_dirty': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      
+      if (notes != null) cardUpdates['notes'] = notes;
+      
+      await txn.update('Card', cardUpdates, where: 'id = ?', whereArgs: [cardId]);
+      
+      // Update card fields
+      for (final entry in fieldValues.entries) {
+        await txn.rawUpdate('''
+          UPDATE CardField 
+          SET field_value = ?, is_dirty = 1, updated_at = ?
+          WHERE card_id = ? AND field_definition_id = (
+            SELECT fd.id FROM FieldDefinition fd 
+            INNER JOIN Card c ON fd.deck_id = c.deck_id 
+            WHERE c.id = ? AND fd.field_type = ?
+          )
+        ''', [entry.value, DateTime.now().toIso8601String(), cardId, cardId, entry.key]);
+      }
+    });
+  }
+
+  /// Delete a card and its fields
+  Future<void> deleteCardWithFields(int cardId) async {
+    final db = await database;
+    
+    await db.transaction((txn) async {
+      // Get deck ID before deletion
+      final cardInfo = await txn.query('Card', columns: ['deck_id'], where: 'id = ?', whereArgs: [cardId]);
+      if (cardInfo.isEmpty) return;
+      
+      final deckId = cardInfo.first['deck_id'] as int;
+      
+      // Delete card fields
+      await txn.delete('CardField', where: 'card_id = ?', whereArgs: [cardId]);
+      
+      // Delete user progress
+      await txn.delete('UserProgress', where: 'card_id = ?', whereArgs: [cardId]);
+      
+      // Delete card
+      await txn.delete('Card', where: 'id = ?', whereArgs: [cardId]);
+      
+      // Card count is now calculated dynamically, no need to update
+    });
+  }
+
+  // ===== USER PROGRESS OPERATIONS =====
+
+  /// Create or update user progress
+  Future<void> upsertUserProgress(UserProgress progress) async {
+      final db = await database;
+      
+      final existing = await db.query(
+      'UserProgress',
+      where: 'card_id = ? AND user_id = ?',
+      whereArgs: [progress.cardId, progress.userId],
+      );
+      
+      if (existing.isNotEmpty) {
+        await db.update(
+        'UserProgress',
+        progress.toMap(),
+        where: 'card_id = ? AND user_id = ?',
+        whereArgs: [progress.cardId, progress.userId],
+        );
+      } else {
+      await db.insert('UserProgress', progress.toMap());
+    }
+  }
+
+  /// Mark a card as incorrect and update progress
+  Future<void> markCardIncorrect(int cardId, int categoryId, String categoryName) async {
+    try {
+    final db = await database;
+      final now = DateTime.now();
+      
+      final existing = await db.query(
+        'UserProgress',
+        where: 'card_id = ?',
+        whereArgs: [cardId],
+      );
+      
+      if (existing.isNotEmpty) {
+        final progress = UserProgress.fromMap(existing.first);
+        final updated = progress.copyWith(
+          timesSeen: progress.timesSeen + 1,
+          totalReviews: progress.totalReviews + 1,
+          lastReviewed: now.toIso8601String(),
+          streak: 0,
+          easeFactor: (progress.easeFactor - 0.2).clamp(1.3, 2.5),
+          nextReview: now.add(Duration(minutes: 1)).toIso8601String(),
+          isDirty: true,
+          updatedAt: now.toIso8601String(),
+        );
     
     await db.update(
-      'Category',
-      {
-        'name': category.name,
-        'description': category.description,
-      },
-      where: 'id = ?',
-      whereArgs: [category.id],
-    );
-  }
-
-  /// Delete a category and all its cards
-  Future<void> deleteCategory(int categoryId) async {
-    final db = await database;
-    
-    // Delete all cards in this category first
-    await db.delete('Card', where: 'category_id = ?', whereArgs: [categoryId]);
-    
-    // Delete the category
-    await db.delete('Category', where: 'id = ?', whereArgs: [categoryId]);
-  }
-
-  // ===== CARD MANAGEMENT METHODS =====
-
-  /// Add a new card
-  Future<int> addCard(
-    int categoryId,
-    String kana,
-    String english, {
-    String? hiragana,
-    String? romaji,
-    String? notes,
-  }) async {
-    final db = await database;
-    
-    final cardMap = {
-      'kana': kana,
-      'hiragana': hiragana,
-      'english': english,
-      'romaji': romaji,
-      'notes': notes,
-      'category_id': categoryId,
-    };
-    
-    return await db.insert('Card', cardMap);
-  }
-
-  /// Update an existing card
-  Future<void> updateCard(Flashcard card) async {
-    final db = await database;
-    
-    try {
-      await db.update(
-        'Card',
-        {
-          'kana': card.kana,
-          'hiragana': card.hiragana,
-          'english': card.english,
-          'romaji': card.romaji,
-          'notes': card.notes,
-        },
-        where: 'id = ?',
-        whereArgs: [card.id],
-      );
-    } catch (e) {
-      // If notes column doesn't exist, try to add it and retry
-      if (e.toString().contains('no such column: notes')) {
-        try {
-          await db.execute('ALTER TABLE Card ADD COLUMN notes TEXT');
-          // Retry the update with notes
-          await db.update(
-            'Card',
-            {
-              'kana': card.kana,
-              'hiragana': card.hiragana,
-              'english': card.english,
-              'romaji': card.romaji,
-              'notes': card.notes,
-            },
-            where: 'id = ?',
-            whereArgs: [card.id],
-          );
-        } catch (addColumnError) {
-          // If adding the column fails, update without notes
-          await db.update(
-            'Card',
-            {
-              'kana': card.kana,
-              'hiragana': card.hiragana,
-              'english': card.english,
-              'romaji': card.romaji,
-            },
-            where: 'id = ?',
-            whereArgs: [card.id],
-          );
-        }
+          'UserProgress',
+          updated.toMap(),
+          where: 'card_id = ?',
+          whereArgs: [cardId],
+        );
       } else {
-        rethrow;
+        final newProgress = UserProgress(
+          id: 0,
+          cardId: cardId,
+          userId: '1',
+          timesSeen: 1,
+          timesCorrect: 0,
+          totalReviews: 1,
+          lastReviewed: now.toIso8601String(),
+          nextReview: now.add(Duration(minutes: 1)).toIso8601String(),
+          difficultyLevel: 1,
+          isMastered: false,
+          createdAt: now.toIso8601String(),
+          updatedAt: now.toIso8601String(),
+          interval: 1,
+          repetitions: 0,
+          easeFactor: 2.5,
+          streak: 0,
+          isDirty: true,
+        );
+        
+        await db.insert('UserProgress', newProgress.toMap());
       }
+    } catch (e) {
+      AppLogger.error('Error marking card incorrect', e);
     }
   }
 
-  /// Delete a card
-  Future<void> deleteCard(int cardId) async {
+  /// Mark a card as correct and update progress
+  Future<void> markCardCorrect(int cardId, int categoryId) async {
+    try {
     final db = await database;
-    
-    // Delete from Card table
-    await db.delete('Card', where: 'id = ?', whereArgs: [cardId]);
-    
-    // Also delete from IncorrectCards if it exists
-    await db.delete('IncorrectCards', where: 'card_id = ?', whereArgs: [cardId]);
+      final now = DateTime.now();
+      
+      final existing = await db.query(
+        'UserProgress',
+        where: 'card_id = ?',
+        whereArgs: [cardId],
+      );
+      
+      if (existing.isNotEmpty) {
+        final progress = UserProgress.fromMap(existing.first);
+        final newStreak = progress.streak + 1;
+        final newRepetitions = progress.repetitions + 1;
+        final newInterval = newRepetitions == 1 ? 1 : (progress.interval * progress.easeFactor).round();
+        final isMastered = newRepetitions >= 5 && progress.easeFactor >= 2.5;
+        
+        final updated = progress.copyWith(
+          timesSeen: progress.timesSeen + 1,
+          timesCorrect: progress.timesCorrect + 1,
+          totalReviews: progress.totalReviews + 1,
+          lastReviewed: now.toIso8601String(),
+          nextReview: now.add(Duration(days: newInterval)).toIso8601String(),
+          interval: newInterval,
+          repetitions: newRepetitions,
+          easeFactor: (progress.easeFactor + 0.1).clamp(1.3, 2.5),
+          streak: newStreak,
+          isMastered: isMastered,
+          isDirty: true,
+          updatedAt: now.toIso8601String(),
+        );
+        
+        await db.update(
+          'UserProgress',
+          updated.toMap(),
+          where: 'card_id = ?',
+          whereArgs: [cardId],
+        );
+      } else {
+        final newProgress = UserProgress(
+          id: 0,
+          cardId: cardId,
+          userId: '1',
+          timesSeen: 1,
+          timesCorrect: 1,
+          totalReviews: 1,
+          lastReviewed: now.toIso8601String(),
+          nextReview: now.add(Duration(days: 1)).toIso8601String(),
+          difficultyLevel: 1,
+          isMastered: false,
+          createdAt: now.toIso8601String(),
+          updatedAt: now.toIso8601String(),
+          interval: 1,
+          repetitions: 1,
+          easeFactor: 2.5,
+          streak: 1,
+          isDirty: true,
+        );
+        
+        await db.insert('UserProgress', newProgress.toMap());
+      }
+    } catch (e) {
+      AppLogger.error('Error marking card correct', e);
+    }
   }
 
-  // ===== FAVORITES MANAGEMENT METHODS =====
+  // ===== BACKWARD COMPATIBILITY METHODS =====
 
-  /// Toggle favorite status of a card
+  /// Get categories (wraps getDeckTree for compatibility)
+  Future<List<app_models.Category>> getCategoryTree() async {
+    final deckTree = await getDeckTree();
+    return deckTree.map((deck) => app_models.Category.fromDeck(deck)).toList();
+  }
+
+  /// Get cards by category (wraps getCardsWithFieldsByDeck for compatibility)
+  Future<List<Flashcard>> getCardsByCategory(int categoryId) async {
+      print('DEBUG: getCardsByCategory - Loading cards for category ID: $categoryId');
+      final cards = await getCardsWithFieldsByDeck(categoryId);
+      print('DEBUG: getCardsByCategory - getCardsWithFieldsByDeck returned ${cards.length} cards');
+    
+    // Get the Favorites deck ID and all favorite card IDs in one query
+    final db = await database;
+    final favoritesResult = await db.rawQuery('''
+      SELECT dm.card_id
+      FROM DeckMembership dm
+      INNER JOIN Deck d ON dm.deck_id = d.id
+      WHERE d.name = 'Favorites' AND d.parent_id = (
+        SELECT id FROM Deck WHERE language = 'Japanese' AND parent_id IS NULL
+      )
+    ''');
+    
+    final Set<int> favoriteCardIds = favoritesResult
+        .map((row) => row['card_id'] as int)
+        .toSet();
+    
+    return cards.map((card) {
+      final isFavorite = favoriteCardIds.contains(card.id);
+      return Flashcard.fromCard(card.copyWith(isFavorite: isFavorite));
+    }).toList();
+  }
+
+  /// Get card by ID (wraps getCardWithFieldsById for compatibility)
+  Future<Flashcard?> getCardById(int cardId) async {
+      final card = await getCardWithFieldsById(cardId);
+      if (card == null) return null;
+    
+    // Check if this card is in the Favorites deck
+    final db = await database;
+    final favoritesResult = await db.rawQuery('''
+      SELECT 1 FROM DeckMembership dm
+      INNER JOIN Deck d ON dm.deck_id = d.id
+      WHERE d.name = 'Favorites' AND d.parent_id = (
+        SELECT id FROM Deck WHERE language = 'Japanese' AND parent_id IS NULL
+      ) AND dm.card_id = ?
+    ''', [cardId]);
+    
+    final isFavorite = favoritesResult.isNotEmpty;
+    return Flashcard.fromCard(card.copyWith(isFavorite: isFavorite));
+  }
+
+  /// Get deck by ID
+  Future<Deck?> getDeckById(int deckId) async {
+    final db = await database;
+    
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT 
+        d.id,
+        d.name,
+        d.language,
+        d.parent_id,
+        d.sort_order,
+        d.is_dirty,
+        d.updated_at,
+        CASE 
+          WHEN EXISTS(SELECT 1 FROM Deck child WHERE child.parent_id = d.id) 
+          THEN 1 
+          ELSE 0 
+        END as has_children,
+        (SELECT COUNT(*) FROM Card c WHERE c.deck_id = d.id) as card_count,
+        '' as full_path
+      FROM Deck d
+      WHERE d.id = ?
+    ''', [deckId]);
+    
+    if (maps.isEmpty) return null;
+    return Deck.fromMap(maps.first);
+  }
+
+  /// Get category by ID (wraps getDeckById for compatibility)
+  Future<app_models.Category?> getCategoryById(int categoryId) async {
+    final deck = await getDeckById(categoryId);
+    return deck != null ? app_models.Category.fromDeck(deck) : null;
+  }
+
+  /// Add card with individual parameters (legacy compatibility)
+  Future<int> addCard(int categoryId, String kana, String english, {String? hiragana, String? romaji, String? notes}) async {
+    return await addCardWithFields(
+      categoryId,
+      {
+        'kana': kana,
+        'hiragana': hiragana ?? '',
+        'english': english,
+        'romaji': romaji ?? '',
+      },
+      notes: notes,
+      isFavorite: false,
+    );
+  }
+
+  /// Add card with Flashcard object
+  Future<int> addCardFromFlashcard(Flashcard flashcard) async {
+    return await addCardWithFields(
+      flashcard.categoryId,
+      {
+        'kana': flashcard.kana,
+        'hiragana': flashcard.hiragana ?? '',
+        'english': flashcard.english,
+        'romaji': flashcard.romaji ?? '',
+      },
+      notes: flashcard.notes,
+      isFavorite: flashcard.isFavorite,
+    );
+  }
+
+  /// Update card (wraps updateCardWithFields for compatibility)
+  Future<void> updateCard(Flashcard flashcard) async {
+    await updateCardWithFields(
+      flashcard.id,
+      {
+        'kana': flashcard.kana,
+        'hiragana': flashcard.hiragana ?? '',
+        'english': flashcard.english,
+        'romaji': flashcard.romaji ?? '',
+      },
+      notes: flashcard.notes,
+      isFavorite: flashcard.isFavorite,
+    );
+  }
+
+  /// Delete card (wraps deleteCardWithFields for compatibility)
+  Future<void> deleteCard(int cardId) async {
+    await deleteCardWithFields(cardId);
+  }
+
+  /// Toggle favorite status using DeckMembership
   Future<void> toggleFavorite(int cardId) async {
     final db = await database;
     
-    // Get current favorite status
-    final result = await db.query(
-      'Card',
-      columns: ['is_favorite'],
-      where: 'id = ?',
-      whereArgs: [cardId],
-    );
+    // Get the Favorites deck ID (create if doesn't exist)
+    int? favoritesDeckId = await _getFavoritesDeckId(db);
     
-    if (result.isNotEmpty) {
-      final currentStatus = result.first['is_favorite'] as int? ?? 0;
-      final newStatus = currentStatus == 1 ? 0 : 1;
+    if (favoritesDeckId == null) {
+      // Create Favorites deck only when first card is favorited
+      final japaneseDeckResult = await db.rawQuery('''
+        SELECT id FROM Deck 
+        WHERE language = 'Japanese' AND parent_id IS NULL
+        ORDER BY id LIMIT 1
+      ''');
       
-      await db.update(
-        'Card',
-        {'is_favorite': newStatus},
-        where: 'id = ?',
-        whereArgs: [cardId],
-      );
+      if (japaneseDeckResult.isEmpty) {
+        throw Exception('Japanese deck not found - cannot create Favorites deck');
+      }
+      
+      final japaneseDeckId = japaneseDeckResult.first['id'] as int;
+      
+      favoritesDeckId = await db.insert('Deck', {
+        'name': 'Favorites',
+        'language': 'Japanese',
+        'parent_id': japaneseDeckId,
+        'sort_order': -9999, // Special sort order to appear first
+        'is_dirty': 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    }
+    
+    // Check if card is already in favorites
+    final existingMembership = await db.rawQuery('''
+      SELECT 1 FROM DeckMembership 
+      WHERE deck_id = ? AND card_id = ?
+    ''', [favoritesDeckId, cardId]);
+    
+    if (existingMembership.isNotEmpty) {
+      // Remove from favorites
+      await db.rawDelete('''
+        DELETE FROM DeckMembership 
+        WHERE deck_id = ? AND card_id = ?
+      ''', [favoritesDeckId, cardId]);
+    } else {
+      // Add to favorites
+      await db.rawInsert('''
+        INSERT OR IGNORE INTO DeckMembership (deck_id, card_id)
+        VALUES (?, ?)
+      ''', [favoritesDeckId, cardId]);
     }
   }
 
-  /// Get all favorite cards
+  /// Get the Favorites deck ID (only if it exists)
+  Future<int?> _getFavoritesDeckId(Database db) async {
+    final favoritesResult = await db.rawQuery('''
+      SELECT id FROM Deck 
+      WHERE name = 'Favorites' AND parent_id = (
+        SELECT id FROM Deck WHERE language = 'Japanese' AND parent_id IS NULL
+      )
+    ''');
+    
+    if (favoritesResult.isNotEmpty) {
+      return favoritesResult.first['id'] as int;
+    }
+    
+    return null; // Favorites deck doesn't exist
+  }
+
+  /// Get favorite cards using DeckMembership
   Future<List<Flashcard>> getFavoriteCards() async {
     final db = await database;
     
-    final results = await db.rawQuery('''
-      SELECT c.*, cat.name as category_name
-      FROM Card c
-      LEFT JOIN Category cat ON c.category_id = cat.id
-      WHERE c.is_favorite = 1
-      ORDER BY c.id
-    ''');
+    // Get the Favorites deck ID (only if it exists)
+    final favoritesDeckId = await _getFavoritesDeckId(db);
     
-    return results.map((map) => Flashcard.fromMap(map)).toList();
+    if (favoritesDeckId == null) {
+      return []; // No Favorites deck exists
+    }
+    
+    // Get cards that are in the Favorites deck via DeckMembership
+    final cardMaps = await db.rawQuery('''
+      SELECT 
+        c.id,
+        c.deck_id,
+        c.notes,
+        c.is_dirty,
+        c.updated_at,
+        d.name as deck_name
+      FROM Card c
+      INNER JOIN Deck d ON c.deck_id = d.id
+      INNER JOIN DeckMembership dm ON c.id = dm.card_id
+      WHERE dm.deck_id = ?
+      ORDER BY c.id
+    ''', [favoritesDeckId]);
+    
+    final List<Flashcard> favoriteCards = [];
+    
+    for (final cardMap in cardMaps) {
+      final cardId = cardMap['id'] as int;
+      
+      final fieldMaps = await db.rawQuery('''
+        SELECT 
+          cf.id,
+          cf.card_id,
+          cf.field_definition_id,
+          cf.field_value,
+          cf.is_dirty,
+          cf.updated_at,
+          fd.field_type,
+          fd.is_front,
+          fd.is_back
+        FROM CardField cf
+        INNER JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
+        WHERE cf.card_id = ?
+        ORDER BY fd.sort_order
+      ''', [cardId]);
+      
+      final fields = fieldMaps.map((fieldMap) => CardField.fromMap(fieldMap)).toList();
+      final card = Card.fromMap(cardMap).copyWith(fields: fields);
+      favoriteCards.add(Flashcard.fromCard(card));
+    }
+    
+    return favoriteCards;
   }
 
-  /// Get favorite cards count
+  /// Get favorite cards count using DeckMembership
   Future<int> getFavoriteCardsCount() async {
     final db = await database;
     
+    // Get the Favorites deck ID (only if it exists)
+    final favoritesDeckId = await _getFavoritesDeckId(db);
+    
+    if (favoritesDeckId == null) {
+      return 0; // No Favorites deck exists
+    }
+    
     final result = await db.rawQuery('''
-      SELECT COUNT(*) as count
-      FROM Card
-      WHERE is_favorite = 1
-    ''');
+      SELECT COUNT(*) as count 
+      FROM DeckMembership 
+      WHERE deck_id = ?
+    ''', [favoritesDeckId]);
     
     return result.first['count'] as int? ?? 0;
   }
+
+  /// Get incorrect cards for category (compatibility method)
+  Future<List<IncorrectCard>> getIncorrectCards(int categoryId) async {
+    final db = await database;
+    
+    final maps = await db.rawQuery('''
+      SELECT 
+        up.card_id,
+        up.times_seen - up.times_correct as incorrect_count,
+        up.last_reviewed as last_incorrect,
+        0 as is_reviewed
+      FROM UserProgress up
+      INNER JOIN Card c ON up.card_id = c.id
+      WHERE c.deck_id = ? 
+        AND up.times_seen > 0 
+        AND (up.times_correct * 1.0 / up.times_seen) < 0.7
+      ORDER BY up.last_reviewed DESC
+    ''', [categoryId]);
+
+    return maps.map((map) {
+      final lastIncorrectStr = map['last_incorrect'] as String?;
+      int? lastIncorrectMillis;
+      if (lastIncorrectStr != null) {
+        try {
+          final dateTime = DateTime.parse(lastIncorrectStr);
+          lastIncorrectMillis = dateTime.millisecondsSinceEpoch;
+        } catch (e) {
+          lastIncorrectMillis = null;
+        }
+      }
+
+      return IncorrectCard.fromMap({
+        ...map,
+        'last_incorrect': lastIncorrectMillis,
+      });
+    }).toList();
+  }
+
+  /// Get spaced repetition card (compatibility method)
+  Future<SpacedRepetitionCard?> getSpacedRepetitionCard(int cardId, int categoryId) async {
+    final db = await database;
+    
+    final maps = await db.query(
+      'UserProgress',
+      where: 'card_id = ?',
+      whereArgs: [cardId],
+    );
+
+    if (maps.isNotEmpty) {
+      final progress = UserProgress.fromMap(maps.first);
+      
+      // Convert ISO 8601 strings back to milliseconds
+      int lastReviewedMillis = 0;
+      int nextReviewMillis = 0;
+      
+      try {
+        lastReviewedMillis = DateTime.parse(progress.lastReviewed ?? DateTime.now().toIso8601String()).millisecondsSinceEpoch;
+    } catch (e) {
+        lastReviewedMillis = DateTime.now().millisecondsSinceEpoch;
+      }
+      
+      try {
+        nextReviewMillis = DateTime.parse(progress.nextReview ?? DateTime.now().add(Duration(days: 1)).toIso8601String()).millisecondsSinceEpoch;
+      } catch (e) {
+        nextReviewMillis = DateTime.now().add(Duration(days: 1)).millisecondsSinceEpoch;
+      }
+      
+      return SpacedRepetitionCard(
+        cardId: progress.cardId,
+        categoryId: categoryId,
+        interval: progress.interval,
+        repetitions: progress.repetitions,
+        easeFactor: progress.easeFactor,
+        lastReviewed: lastReviewedMillis,
+        nextReview: nextReviewMillis,
+        streak: progress.streak,
+        totalReviews: progress.totalReviews,
+      );
+    }
+    
+    return null;
+  }
+
+  /// Upsert spaced repetition card (compatibility method)
+  Future<void> upsertSpacedRepetitionCard(SpacedRepetitionCard card) async {
+    final userProgress = UserProgress(
+      id: 0,
+      cardId: card.cardId,
+      userId: '1',
+      timesSeen: card.repetitions,
+      timesCorrect: card.repetitions,
+      totalReviews: card.repetitions,
+      lastReviewed: DateTime.fromMillisecondsSinceEpoch(card.lastReviewed).toIso8601String(),
+      nextReview: DateTime.fromMillisecondsSinceEpoch(card.nextReview).toIso8601String(),
+      difficultyLevel: 1,
+      isMastered: card.repetitions >= 5 && card.easeFactor >= 2.5,
+      createdAt: DateTime.now().toIso8601String(),
+      updatedAt: DateTime.now().toIso8601String(),
+      interval: card.interval,
+      repetitions: card.repetitions,
+      easeFactor: card.easeFactor,
+      streak: card.streak,
+      isDirty: true,
+    );
+    
+    await upsertUserProgress(userProgress);
+  }
+
+  /// Get incorrect cards for category (returns Flashcard objects)
+  Future<List<Flashcard>> getIncorrectCardsForCategory(int categoryId) async {
+    final incorrectCards = await getIncorrectCards(categoryId);
+    final List<Flashcard> flashcards = [];
+    
+    for (final incorrectCard in incorrectCards) {
+      final flashcard = await getCardById(incorrectCard.cardId);
+      if (flashcard != null) {
+        flashcards.add(flashcard);
+      }
+    }
+    
+    return flashcards;
+  }
+
+  /// Get review stats for category (compatibility method)
+  Future<Map<String, int>> getReviewStatsForCategory(int categoryId) async {
+    final db = await database;
+    
+    // Get total cards
+    final totalResult = await db.rawQuery('''
+      SELECT COUNT(*) as count FROM Card WHERE deck_id = ?
+    ''', [categoryId]);
+    final totalCards = totalResult.first['count'] as int? ?? 0;
+    
+    // Get new cards (no progress)
+    final newResult = await db.rawQuery('''
+      SELECT COUNT(*) as count 
+      FROM Card c
+      LEFT JOIN UserProgress up ON c.id = up.card_id
+      WHERE c.deck_id = ? AND up.card_id IS NULL
+    ''', [categoryId]);
+    final newCards = newResult.first['count'] as int? ?? 0;
+    
+    // Get due cards
+    final now = DateTime.now().toIso8601String();
+    final dueResult = await db.rawQuery('''
+      SELECT COUNT(*) as count 
+      FROM UserProgress up
+      INNER JOIN Card c ON up.card_id = c.id
+      WHERE c.deck_id = ? AND up.next_review <= ? AND up.repetitions > 0
+    ''', [categoryId, now]);
+    final dueCards = dueResult.first['count'] as int? ?? 0;
+    
+    // Get overdue cards
+    final overdueResult = await db.rawQuery('''
+      SELECT COUNT(*) as count 
+      FROM UserProgress up
+      INNER JOIN Card c ON up.card_id = c.id
+      WHERE c.deck_id = ? AND up.next_review < ? AND up.repetitions > 0
+    ''', [categoryId, now]);
+    final overdueCards = overdueResult.first['count'] as int? ?? 0;
+    
+    return {
+      'total_cards': totalCards,
+      'new_cards': newCards,
+      'due_cards': dueCards,
+      'overdue_cards': overdueCards,
+    };
+  }
+
+
+  /// Update category (deck) - compatibility method
+  Future<void> updateCategory(app_models.Category category) async {
+    final db = await database;
+    
+    await db.update('Deck', {
+      'name': category.name,
+      'language': category.description ?? 'Japanese',
+      'parent_id': category.parentId,
+      'is_dirty': 1,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, where: 'id = ?', whereArgs: [category.id]);
+  }
+
+  /// Load spaced repetition settings (stub - returns default settings)
+  Future<SpacedRepetitionSettings> loadSpacedRepetitionSettings() async {
+    // Return default settings since we don't store these in the new schema
+    return SpacedRepetitionPresets.standard;
+  }
+
+  /// Save spaced repetition settings (stub - no-op since we don't store these)
+  Future<void> saveSpacedRepetitionSettings(SpacedRepetitionSettings settings) async {
+    // No-op - settings are handled by SpacedRepetitionService
+  }
+
+  /// Add category with individual parameters (legacy compatibility)
+  Future<int> addCategory(String name, String? description) async {
+    final db = await database;
+    
+    // Special handling for Favorites deck
+    if (name.toLowerCase() == 'favorites') {
+      // Find the main Japanese deck
+      final japaneseDeckResult = await db.rawQuery('''
+        SELECT id FROM Deck 
+        WHERE language = 'Japanese' AND parent_id IS NULL
+        ORDER BY id LIMIT 1
+      ''');
+      
+      if (japaneseDeckResult.isEmpty) {
+        throw Exception('Japanese deck not found - cannot create Favorites deck');
+      }
+      
+      final japaneseDeckId = japaneseDeckResult.first['id'] as int;
+      
+      return await db.insert('Deck', {
+        'name': name,
+        'language': 'Japanese',
+        'parent_id': japaneseDeckId,
+        'sort_order': -9999, // Special sort order to appear first
+        'is_dirty': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    }
+    
+    return await db.insert('Deck', {
+      'name': name,
+      'language': description ?? 'Japanese',
+      'parent_id': null,
+      'sort_order': 0,
+      'is_dirty': 1,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Add category with Category object
+  Future<int> addCategoryFromObject(app_models.Category category) async {
+    final db = await database;
+    
+    return await db.insert('Deck', {
+      'name': category.name,
+      'language': category.description ?? 'Japanese',
+      'parent_id': category.parentId,
+      'sort_order': 0,
+      'is_dirty': 1,
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Cleanup orphaned cards
+  Future<int> cleanupOrphanedCards() async {
+    final db = await database;
+    return await db.rawDelete('''
+      DELETE FROM UserProgress
+      WHERE card_id NOT IN (SELECT id FROM Card)
+    ''');
+  }
+
+  /// Mark a card as reviewed (compatibility method)
+  Future<void> markCardReviewed(int cardId, int categoryId) async {
+    // This is a compatibility method - in the new schema, 
+    // review tracking is handled through UserProgress
+    // For now, we'll just log that it was called
+    AppLogger.info('markCardReviewed called for card $cardId in category $categoryId');
+  }
+    
 }

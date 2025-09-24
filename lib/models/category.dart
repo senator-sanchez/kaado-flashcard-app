@@ -1,9 +1,11 @@
-/// Represents a category in the Japanese language learning hierarchy
-/// Categories can have parent-child relationships and contain flashcards
+import 'deck.dart';
+
+/// Legacy Category model for backward compatibility
+/// This wraps the new Deck structure to maintain existing API
 class Category {
   final int id;
   final String name;
-  final String? description;
+  final String? description; // Legacy field, maps to deck.language or null
   final int? parentId;
   final int sortOrder;
   final bool hasChildren;
@@ -11,6 +13,9 @@ class Category {
   final int cardCount;
   final String? fullPath;
   List<Category>? children; // Mutable for building hierarchy
+  
+  // Internal deck object for new schema compatibility
+  final Deck? _deck;
 
   Category({
     required this.id,
@@ -23,15 +28,16 @@ class Category {
     this.cardCount = 0,
     this.fullPath,
     this.children,
-  });
+    Deck? deck,
+  }) : _deck = deck;
 
-  /// Create a Category from a database map
+  /// Create a Category from a database map (legacy format)
   /// Handles both direct column names and computed field names
   factory Category.fromMap(Map<String, dynamic> map) {
     return Category(
-      id: map['id'] ?? map['category_id'] ?? 0,
+      id: map['id'] ?? map['category_id'] ?? map['deck_id'] ?? 0,
       name: map['name'] ?? '',
-      description: map['description'],
+      description: map['description'] ?? map['language'],
       parentId: map['parent_id'],
       sortOrder: map['sort_order'] ?? 0,
       hasChildren: map['has_children'] == 1,
@@ -42,13 +48,31 @@ class Category {
     );
   }
 
-  /// Convert Category to a database map
+  /// Create a Category from new Deck structure
+  factory Category.fromDeck(Deck deck) {
+    return Category(
+      id: deck.id,
+      name: deck.name,
+      description: deck.language,
+      parentId: deck.parentId,
+      sortOrder: deck.sortOrder,
+      hasChildren: deck.hasChildren,
+      isCardCategory: deck.cardCount > 0 && !deck.hasChildren,
+      cardCount: deck.cardCount,
+      fullPath: deck.fullPath,
+      children: deck.children?.map((child) => Category.fromDeck(child)).toList(),
+      deck: deck,
+    );
+  }
+
+  /// Convert Category to a database map (legacy format)
   /// Note: children is not a database column, it's built in memory
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
       'description': description,
+      'language': description, // Support both old and new schema
       'parent_id': parentId,
       'sort_order': sortOrder,
       'has_children': hasChildren ? 1 : 0,
@@ -58,6 +82,9 @@ class Category {
       // Note: children is not a database column, it's built in memory
     };
   }
+
+  /// Get the underlying Deck object (if available)
+  Deck? get deck => _deck;
 
   @override
   String toString() {

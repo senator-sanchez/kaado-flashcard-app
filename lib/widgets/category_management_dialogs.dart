@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 // Project imports - Models
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 
 // Project imports - Services
 import '../services/database_service.dart';
@@ -173,7 +173,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
 
 /// Dialog for editing an existing category
 class EditCategoryDialog extends StatefulWidget {
-  final Category category;
+  final app_models.Category category;
   final VoidCallback onCategoryUpdated;
 
   const EditCategoryDialog({
@@ -215,7 +215,7 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
 
     try {
       final databaseService = DatabaseService();
-      final updatedCategory = Category(
+      final updatedCategory = app_models.Category(
         id: widget.category.id,
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),

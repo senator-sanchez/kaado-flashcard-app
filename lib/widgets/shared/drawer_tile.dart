@@ -27,48 +27,59 @@ class DrawerTile extends StatelessWidget {
     final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: iconColor ?? (isSelected ? theme.primaryColor : appTheme.primaryIcon),
-        size: 24,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: appTheme.primaryText,
-          fontSize: 16,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: iconColor ?? (isSelected ? theme.primaryColor : appTheme.primaryIcon),
+              size: 24,
+            ),
+            SizedBox(width: 32),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: appTheme.primaryText,
+                      fontSize: 16,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: appTheme.secondaryText,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            trailing ?? (isSelected
+                ? Icon(
+                    Icons.check,
+                    color: theme.primaryColor,
+                    size: 20,
+                  )
+                : Icon(
+                    Icons.chevron_right,
+                    color: appTheme.secondaryIcon,
+                    size: 20,
+                  )),
+          ],
         ),
       ),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle!,
-              style: TextStyle(
-                color: appTheme.secondaryText,
-                fontSize: 14,
-              ),
-            )
-          : null,
-      trailing: trailing ?? (isSelected
-          ? Icon(
-              Icons.check,
-              color: theme.primaryColor,
-              size: 20,
-            )
-          : Icon(
-              Icons.chevron_right,
-              color: appTheme.secondaryIcon,
-              size: 20,
-            )),
-      selected: isSelected,
-      selectedTileColor: Colors.transparent,
-      tileColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(0),
-      ),
-      onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 }

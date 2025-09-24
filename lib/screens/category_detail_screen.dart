@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 // Project imports - Models
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 import '../models/flashcard.dart';
 
 // Project imports - Services
@@ -27,7 +27,7 @@ import '../widgets/card_edit_dialog.dart';
 /// - Search and filtering capabilities
 /// - Clean card display with all fields visible
 class CategoryDetailScreen extends StatefulWidget {
-  final Category category;
+  final app_models.Category category;
   final DatabaseService databaseService;
 
   const CategoryDetailScreen({
@@ -55,7 +55,8 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   Future<void> _loadCards() async {
     try {
       setState(() => _isLoading = true);
-      final cards = await widget.databaseService.getCardsByCategory(widget.category.id);
+      // Use database thread service to prevent main thread blocking
+      final cards = await DatabaseService().getCardsByCategory(widget.category.id);
       setState(() {
         _cards = cards;
         _isLoading = false;

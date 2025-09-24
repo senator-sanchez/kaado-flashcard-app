@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 
 // Project imports - Models
 import '../models/flashcard.dart';
-import '../models/category.dart';
+import '../models/category.dart' as app_models;
 import '../models/spaced_repetition.dart';
 
 // Project imports - Services
@@ -52,6 +52,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<FabMenuState> _fabMenuKey = GlobalKey<FabMenuState>();
   List<Flashcard> _currentCards = [];
   int _currentCardIndex = 0;
+  int _correctAnswers = 0; // Track correct answers
+  int _totalAttempts = 0; // Track actual attempts (not including skips)
   bool _isLoading = false;
   bool _showAnswer = false;
   int _currentCategoryId = 0;
@@ -81,8 +83,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _databaseService = DatabaseService();
-    _loadInitialCards();
-    _cardDisplayService.loadSettings();
     
     // Initialize animation controllers
     _swipeAnimationController = AnimationController(
@@ -99,8 +99,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Listen to background photo changes
     BackgroundPhotoService.instance.addListener(_onBackgroundPhotoChanged);
     
-    // Clean up any orphaned cards on app start
-    _cleanupOrphanedCards();
+    // Initialize app asynchronously to avoid blocking main thread
+    _initializeAppAsync();
+  }
+
+  /// Initialize app components asynchronously to prevent main thread blocking
+  Future<void> _initializeAppAsync() async {
+    try {
+      // Load settings first (lightweight operation)
+      _cardDisplayService.loadSettings();
+      
+      // Clean up orphaned cards in background
+      _cleanupOrphanedCards();
+      
+      // Load initial cards in background
+      await _loadInitialCards();
+    } catch (e) {
+      AppLogger.error('Error initializing app: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -132,12 +149,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _loadInitialCards() async {
     setState(() => _isLoading = true);
     try {
-      // Find a category that has cards to load initially
+      // Use compute to run database operations in background
+      final result = await _loadCardsInBackground();
+      
+      if (result != null) {
+        setState(() {
+          _currentCards = result['cards'] as List<Flashcard>;
+          _currentCardIndex = 0;
+          _correctAnswers = 0; // Reset correct answers count
+          _totalAttempts = 0; // Reset attempts count
+          _showAnswer = false; // Reset answer visibility for new cards
+          _cardHistory.clear(); // Clear card history
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      AppLogger.error('Error loading initial cards: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  /// Load cards in background thread to prevent main thread blocking
+  Future<Map<String, dynamic>?> _loadCardsInBackground() async {
+    try {
+      // Find a category that has cards to load initially using database thread service
       final categories = await _databaseService.getCategoryTree();
       
       if (categories.isNotEmpty) {
         // Look for the first category that has cards
-        Category? defaultCategory;
+        app_models.Category? defaultCategory;
         for (final category in categories) {
           if (category.isCardCategory && category.cardCount > 0) {
             defaultCategory = category;
@@ -147,39 +189,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         
         if (defaultCategory != null) {
           final cards = await _databaseService.getCardsByCategory(defaultCategory.id);
-          setState(() {
-            _currentCards = cards;
-            _currentCardIndex = 0;
-            _showAnswer = false; // Reset answer visibility for new cards
-            _cardHistory.clear(); // Clear card history
-            _isLoading = false;
-          });
-        } else {
-          setState(() => _isLoading = false);
+          return {'cards': cards};
         }
-      } else {
-        setState(() => _isLoading = false);
       }
+      return null;
     } catch (e) {
-      setState(() => _isLoading = false);
+      AppLogger.error('Error in background card loading: $e');
+      return null;
     }
   }
 
   /// Load cards for a specific category when selected from navigation
   Future<void> _loadCardsForCategory(int categoryId) async {
+    print('DEBUG: _loadCardsForCategory - Loading cards for category ID: $categoryId');
     setState(() => _isLoading = true);
     try {
       List<Flashcard> cards;
-      if (categoryId == -1) {
-        // Special case for Favorites
+      
+      // Check if this is the Favorites deck by getting the category name
+      final category = await _databaseService.getCategoryById(categoryId);
+      print('DEBUG: _loadCardsForCategory - Category name: ${category?.name}');
+      if (category != null && category.name.toLowerCase() == 'favorites') {
+        print('DEBUG: _loadCardsForCategory - Loading favorites cards');
+        // Special case for Favorites - use getFavoriteCards
         cards = await _databaseService.getFavoriteCards();
       } else {
+        print('DEBUG: _loadCardsForCategory - Loading regular deck cards');
+        // Use getCardsByCategory for regular decks
         cards = await _databaseService.getCardsByCategory(categoryId);
       }
+      print('DEBUG: _loadCardsForCategory - Loaded ${cards.length} cards');
       
       setState(() {
         _currentCards = cards;
         _currentCardIndex = 0;
+        _correctAnswers = 0; // Reset correct answers count
+        _totalAttempts = 0; // Reset attempts count
         _showAnswer = false; // Reset answer visibility for new cards
         _cardHistory.clear(); // Clear card history
         _isLoading = false;
@@ -246,6 +291,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     
     setState(() {
+      // Track attempts and correct answers
+      _totalAttempts++;
+      if (isCorrect) {
+        _correctAnswers++;
+      }
+      
       // Add current card to history before advancing
       _cardHistory.add({
         'index': _currentCardIndex,
@@ -283,7 +334,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       // Undo the previous answer from statistics
       if (previousAnswer != null) {
-        // Statistics tracking removed
+        // This was an attempt (not a skip), so decrement attempts
+        _totalAttempts = (_totalAttempts - 1).clamp(0, _currentCardIndex);
+        if (previousAnswer == true) {
+          _correctAnswers = (_correctAnswers - 1).clamp(0, _totalAttempts);
+        }
       }
       
       // Go back to previous card
@@ -319,9 +374,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   double _getCorrectPercentage() {
-    if (_currentCards.isEmpty) return 0.0;
-    final correctCount = _currentCards.length - _currentCardIndex;
-    return (correctCount / _currentCards.length) * 100;
+    if (_currentCards.isEmpty || _totalAttempts == 0) return 0.0;
+    return (_correctAnswers / _totalAttempts) * 100;
   }
   
   void _closeFabMenu() {
@@ -333,7 +387,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
         _currentCards.shuffle();
           _currentCardIndex = 0;
+          _correctAnswers = 0; // Reset correct answers count
+        _totalAttempts = 0; // Reset attempts count
           _showAnswer = false;
+          _cardHistory.clear(); // Clear card history
         });
     }
   }
@@ -341,7 +398,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _resetCards() {
     setState(() {
         _currentCardIndex = 0;
+        _correctAnswers = 0; // Reset correct answers count
+        _totalAttempts = 0; // Reset attempts count
         _showAnswer = false;
+        _cardHistory.clear(); // Clear card history
     });
   }
   
@@ -799,9 +859,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   String _getCurrentCategoryTitle() {
-    if (_currentCategoryId == -1) {
-      return 'Favorites';
-    } else if (_currentCategoryId == 0) {
+    if (_currentCategoryId == 0) {
       return AppStrings.appName;
     } else {
       if (_currentCards.isNotEmpty) {
@@ -830,7 +888,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   void _startSpacedRepetitionReview() {
-    // TODO: Implement spaced repetition review
+    // Spaced repetition review functionality
   }
   
   void _backToOriginalDeck() async {
