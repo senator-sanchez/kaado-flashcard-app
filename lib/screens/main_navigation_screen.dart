@@ -6,8 +6,7 @@ import 'home_screen.dart';
 import 'library_screen.dart';
 
 // Project imports - Constants
-import '../constants/app_sizes.dart';
-import '../constants/app_strings.dart';
+// Removed unused imports after removing text labels
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
@@ -43,8 +42,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final systemNavigationBarHeight = SystemUIUtils.getSystemNavigationBarHeight(context);
     final hasSystemNavBar = SystemUIUtils.hasSystemNavigationBar(context);
     
-    // Calculate total height: base height + system navigation bar
-    final totalBottomBarHeight = SystemUIUtils.getRecommendedBottomNavigationHeight(context);
+    // Calculate total height: reduced height + system navigation bar
+    final baseHeight = 60.0; // Reduced from default
+    final totalBottomBarHeight = baseHeight + systemNavigationBarHeight;
 
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
@@ -71,28 +71,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           _currentIndex = 0;
                         });
                       },
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _currentIndex == 0 ? Icons.home : Icons.home_outlined,
-                            color: _currentIndex == 0 
-                                ? appTheme.appBarIcon 
-                                : appTheme.appBarIcon.withValues(alpha: 0.7),
-                            size: 24,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            AppStrings.home,
-                            style: TextStyle(
-                              fontSize: AppSizes.fontSmall,
-                              fontWeight: _currentIndex == 0 ? FontWeight.w600 : FontWeight.w400,
-                              color: _currentIndex == 0 
-                                  ? appTheme.appBarIcon 
-                                  : appTheme.appBarIcon.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
+                      child: Center(
+                        child: Icon(
+                          _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                          color: _currentIndex == 0 
+                              ? appTheme.appBarIcon 
+                              : appTheme.appBarIcon.withValues(alpha: 0.7),
+                          size: 28,
+                        ),
                       ),
                     ),
                   ),
@@ -103,28 +89,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           _currentIndex = 1;
                         });
                       },
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _currentIndex == 1 ? Icons.library_books : Icons.library_books_outlined,
-                            color: _currentIndex == 1 
-                                ? appTheme.appBarIcon 
-                                : appTheme.appBarIcon.withValues(alpha: 0.7),
-                            size: 24,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            AppStrings.library,
-                            style: TextStyle(
-                              fontSize: AppSizes.fontSmall,
-                              fontWeight: _currentIndex == 1 ? FontWeight.w600 : FontWeight.w400,
-                              color: _currentIndex == 1 
-                                  ? appTheme.appBarIcon 
-                                  : appTheme.appBarIcon.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
+                      child: Center(
+                        child: Icon(
+                          _currentIndex == 1 ? Icons.library_books : Icons.library_books_outlined,
+                          color: _currentIndex == 1 
+                              ? appTheme.appBarIcon 
+                              : appTheme.appBarIcon.withValues(alpha: 0.7),
+                          size: 28,
+                        ),
                       ),
                     ),
                   ),

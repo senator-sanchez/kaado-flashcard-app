@@ -33,7 +33,7 @@ class CardField {
       fieldDefinitionId: map['field_definition_id'] ?? 0,
       fieldValue: map['field_value'] ?? '',
       isDirty: (map['is_dirty'] ?? 0) == 1,
-      updatedAt: map['updated_at'],
+      updatedAt: map['updated_at'] != null ? int.tryParse(map['updated_at'].toString()) : null,
       fieldType: map['field_type'], // From JOIN with FieldDefinition
       isFront: map['is_front'] != null ? (map['is_front'] == 1) : null,
       isBack: map['is_back'] != null ? (map['is_back'] == 1) : null,

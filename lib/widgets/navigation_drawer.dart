@@ -16,6 +16,7 @@ import '../services/app_logger.dart';
 
 // Project imports - Screens
 import '../screens/spaced_repetition_settings_screen.dart';
+import '../screens/card_display_settings_screen.dart';
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
@@ -31,18 +32,27 @@ class KaadoNavigationDrawer extends StatefulWidget {
   final VoidCallback? onResetDatabase;
   final Function(AppThemeMode)? onThemeChanged;
   final VoidCallback? onCloseFab;
+  final VoidCallback? onTriggerIncorrectCardsReview;
+  final VoidCallback? onTriggerSpacedRepetitionReview;
 
   const KaadoNavigationDrawer({
-    super.key, 
+    super.key,
     required this.databaseService,
     this.onCategorySelected,
     this.onResetDatabase,
     this.onThemeChanged,
     this.onCloseFab,
+    this.onTriggerIncorrectCardsReview,
+    this.onTriggerSpacedRepetitionReview,
   });
 
   @override
   State<KaadoNavigationDrawer> createState() => _KaadoNavigationDrawerState();
+
+  /// Set swipe operation flag to prevent database calls during swipe gestures
+  static void setSwipeOperation(bool isSwipe) {
+    _KaadoNavigationDrawerState.setSwipeOperationInternal(isSwipe);
+  }
 }
 
 enum DrawerView { main, cards, review, settings }
@@ -51,14 +61,30 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   DrawerView _currentView = DrawerView.main;
   List<app_models.Category> _categories = [];
   bool _isLoading = false;
+  bool _isLoadingCategories = false; // Prevent multiple simultaneous loads
+  DateTime? _lastLoadTime; // Cache timestamp
+  static const Duration _cacheTimeout = Duration(seconds: 30); // Cache for 30 seconds
+  // DateTime? _lastDrawerOpenTime; // Unused field
+  // static const Duration _drawerOpenDebounce = Duration(milliseconds: 500); // Unused field
+  
+  // Static cache to prevent excessive database calls
+  static List<app_models.Category>? _staticCategories;
+  static DateTime? _staticLastLoadTime;
+  static bool _isLoadingGlobally = false; // Global loading flag
+  static bool _isSwipeOperation = false; // Prevent database calls during swipe operations
 
   @override
   void initState() {
     super.initState();
-    _loadCategories();
+    // Only load categories if we don't have them yet and not already loading
+    // Add additional check to prevent excessive calls
+    if (_categories.isEmpty && !_isLoadingCategories && _lastLoadTime == null) {
+      _loadCategories();
+    }
     // Listen to theme changes
     ThemeService().addListener(_onThemeChanged);
   }
+
 
   @override
   void dispose() {
@@ -247,7 +273,7 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
                 child: category.name.toLowerCase() == 'favorites'
                     ? Icon(
                         Icons.star,
-                        color: Colors.amber,
+                        color: Colors.amber, // Keep amber for favorites - this is intentional
                         size: 24,
                       )
                     : null,
@@ -341,10 +367,7 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
         maintainState: true,
         initiallyExpanded: category.parentId == null, // Auto-expand top-level categories
         children: category.children!.map((subcategory) {
-          return Padding(
-            padding: EdgeInsets.only(left: AppSizes.spacingLarge),
-            child: _buildCategoryTile(subcategory, theme, appTheme),
-          );
+          return _buildCategoryTile(subcategory, theme, appTheme);
         }).toList(),
       );
     }
@@ -402,9 +425,11 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
                 subtitle: 'Practice cards you got wrong',
                 icon: Icons.error_outline,
                 onTap: () {
-                  // Navigate to incorrect cards review
+                  // Close drawer and trigger incorrect cards review
                   Navigator.of(context).pop();
-                  // Add navigation logic here
+                  widget.onCloseFab?.call();
+                  // Trigger review mode in home screen
+                  _triggerIncorrectCardsReview();
                 },
               ),
               
@@ -416,9 +441,11 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
                 subtitle: 'Cards due for spaced repetition',
                 icon: Icons.schedule,
                 onTap: () {
-                  // Navigate to spaced repetition review
+                  // Close drawer and trigger spaced repetition review
                   Navigator.of(context).pop();
-                  // Add navigation logic here
+                  widget.onCloseFab?.call();
+                  // Trigger spaced repetition review in home screen
+                  _triggerSpacedRepetitionReview();
                 },
               ),
             ],
@@ -520,6 +547,14 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
           onTap: () => _openSpacedRepetitionSettings(),
         ),
         
+        // Card Display Settings
+        DrawerTile(
+          title: 'Card Display Settings',
+          subtitle: 'Customize what appears on front and back of cards',
+          icon: Icons.visibility,
+          onTap: () => _openCardDisplaySettings(),
+        ),
+        
         // Bottom padding
         SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
       ],
@@ -562,25 +597,140 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   }
 
   Future<void> _loadCategories() async {
+    // Prevent database calls during swipe operations
+    if (_isSwipeOperation) {
+      return;
+    }
+    
+    // Global loading check - prevent any database calls if already loading globally
+    if (_isLoadingGlobally) {
+      return;
+    }
+    
+    // Check static cache first
+    if (_staticCategories != null && 
+        _staticLastLoadTime != null &&
+        DateTime.now().difference(_staticLastLoadTime!) < _cacheTimeout) {
+      setState(() {
+        _categories = _staticCategories!;
+        _isLoading = false;
+      });
+      return;
+    }
+    
+    // Check if we have recent data in cache
+    if (_lastLoadTime != null && 
+        DateTime.now().difference(_lastLoadTime!) < _cacheTimeout && 
+        _categories.isNotEmpty) {
+      return;
+    }
+    
+    // Prevent multiple simultaneous loads
+    if (_isLoadingCategories) {
+      return;
+    }
+    
+    // Additional check to prevent excessive calls
+    if (_lastLoadTime != null && 
+        DateTime.now().difference(_lastLoadTime!) < Duration(seconds: 5)) {
+      return;
+    }
+    
+    // Set global loading flag
+    _isLoadingGlobally = true;
+    
     setState(() {
       _isLoading = true;
+      _isLoadingCategories = true;
     });
 
     try {
-      print('DEBUG: _loadCategories - Starting to load categories');
       final categories = await widget.databaseService.getCategoryTree();
-      print('DEBUG: _loadCategories - Loaded ${categories.length} categories');
+      
       
       setState(() {
         _categories = categories;
         _isLoading = false;
+        _isLoadingCategories = false;
+        _lastLoadTime = DateTime.now(); // Update cache timestamp
       });
+      
+      // Update static cache
+      _staticCategories = categories;
+      _staticLastLoadTime = DateTime.now();
+      
+      // Clear global loading flag
+      _isLoadingGlobally = false;
     } catch (e) {
       AppLogger.error('Error loading categories: $e');
       setState(() {
         _isLoading = false;
+        _isLoadingCategories = false;
       });
+      
+      // Clear global loading flag
+      _isLoadingGlobally = false;
     }
+  }
+
+  /// Refresh categories (public method)
+  void refreshCategories() {
+    _loadCategories();
+  }
+
+  /// Force refresh categories (bypasses cache)
+  void forceRefreshCategories() {
+    _lastLoadTime = null; // Clear cache
+    _loadCategories();
+  }
+
+  /// Handle drawer opening with debouncing
+  void onDrawerOpened() {
+    // Completely disable drawer refresh to prevent excessive database calls
+    return;
+    
+    // Original code commented out to prevent performance issues
+    /*
+    final now = DateTime.now();
+    if (_lastDrawerOpenTime != null && 
+        now.difference(_lastDrawerOpenTime!) < _drawerOpenDebounce) {
+      return; // Skip if called too recently
+    }
+    _lastDrawerOpenTime = now;
+    _loadCategories();
+    */
+  }
+
+  /// Internal method to set swipe operation flag
+  static void setSwipeOperationInternal(bool isSwipe) {
+    _isSwipeOperation = isSwipe;
+  }
+
+  void _openCardDisplaySettings() async {
+    // Close FAB first
+    widget.onCloseFab?.call();
+    
+    // Close the drawer first
+    Navigator.of(context).pop();
+    
+    // Use a post-frame callback to ensure the drawer is fully closed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => CardDisplaySettingsScreen(),
+        ),
+      );
+    });
+  }
+
+  /// Trigger incorrect cards review in home screen
+  void _triggerIncorrectCardsReview() {
+    widget.onTriggerIncorrectCardsReview?.call();
+  }
+
+  /// Trigger spaced repetition review in home screen
+  void _triggerSpacedRepetitionReview() {
+    widget.onTriggerSpacedRepetitionReview?.call();
   }
 }
 

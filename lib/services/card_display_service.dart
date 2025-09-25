@@ -1,8 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/card_display_settings.dart';
+import '../services/app_logger.dart';
 
-/// Service to manage card display settings
+/// Service to manage comprehensive card display settings
+/// 
+/// Handles all card display preferences including front/back fields,
+/// study modes, and UI preferences. Critical for language learning flexibility.
 class CardDisplayService {
   static const String _settingsKey = 'card_display_settings';
   static CardDisplayService? _instance;
@@ -16,7 +20,7 @@ class CardDisplayService {
   CardDisplaySettings get currentSettings => _currentSettings;
 
   /// Load settings from shared preferences
-  Future<void> loadSettings() async {
+  Future<CardDisplaySettings> getDisplaySettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = prefs.getString(_settingsKey);
@@ -24,76 +28,199 @@ class CardDisplayService {
       if (settingsJson != null) {
         final settingsMap = jsonDecode(settingsJson) as Map<String, dynamic>;
         _currentSettings = CardDisplaySettings.fromJson(settingsMap);
+        AppLogger.info('Card display settings loaded successfully');
+      } else {
+        AppLogger.info('No saved settings found, using defaults');
       }
     } catch (e) {
-      // If loading fails, use default settings
+      AppLogger.error('Error loading card display settings', e);
       _currentSettings = CardDisplaySettings.defaultSettings;
     }
+    
+    return _currentSettings;
   }
 
   /// Save settings to shared preferences
-  Future<void> saveSettings(CardDisplaySettings settings) async {
+  Future<void> saveDisplaySettings(CardDisplaySettings settings) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = jsonEncode(settings.toJson());
       await prefs.setString(_settingsKey, settingsJson);
       _currentSettings = settings;
+      AppLogger.info('Card display settings saved successfully');
     } catch (e) {
-      // Handle error silently or log it
-      // Failed to save card display settings
+      AppLogger.error('Error saving card display settings', e);
+      rethrow;
     }
   }
 
-  /// Update front display type
-  Future<void> updateFrontDisplay(CardDisplayType frontDisplay) async {
-    // Remove the front display from back displays if it's there
-    final newBackDisplays = Set<CardDisplayType>.from(_currentSettings.backDisplays);
-    newBackDisplays.remove(frontDisplay);
-    
-    // If no back displays left, add all others except the front
-    if (newBackDisplays.isEmpty) {
-      newBackDisplays.addAll(CardDisplayType.values.where((type) => type != frontDisplay));
-    }
-
+  /// Update front card display options
+  Future<void> updateFrontCardSettings({
+    bool? showKana,
+    bool? showHiragana,
+    bool? showKanji,
+    bool? showRomaji,
+  }) async {
     final newSettings = _currentSettings.copyWith(
-      frontDisplay: frontDisplay,
-      backDisplays: newBackDisplays.toList(),
+      showKana: showKana,
+      showHiragana: showHiragana,
+      showKanji: showKanji,
+      showRomaji: showRomaji,
     );
     
-    await saveSettings(newSettings);
+    await saveDisplaySettings(newSettings);
   }
 
-  /// Update back display types
-  Future<void> updateBackDisplays(Set<CardDisplayType> backDisplays) async {
-    // Ensure front display is not in back displays
-    final filteredBackDisplays = backDisplays.where(
-      (type) => type != _currentSettings.frontDisplay,
-    ).toSet();
-
+  /// Update back card display options
+  Future<void> updateBackCardSettings({
+    bool? showEnglish,
+    bool? showNotes,
+    bool? showPronunciation,
+    bool? showContext,
+  }) async {
     final newSettings = _currentSettings.copyWith(
-      backDisplays: filteredBackDisplays.toList(),
+      showEnglish: showEnglish,
+      showNotes: showNotes,
+      showPronunciation: showPronunciation,
+      showContext: showContext,
     );
     
-    await saveSettings(newSettings);
+    await saveDisplaySettings(newSettings);
   }
 
-  /// Toggle a back display type
-  Future<void> toggleBackDisplay(CardDisplayType displayType) async {
-    if (displayType == _currentSettings.frontDisplay) return;
+  /// Update study mode
+  Future<void> updateStudyMode(CardDisplayMode displayMode) async {
+    final newSettings = _currentSettings.copyWith(displayMode: displayMode);
+    await saveDisplaySettings(newSettings);
+  }
 
-    final newBackDisplays = Set<CardDisplayType>.from(_currentSettings.backDisplays);
+  /// Update UI preferences
+  Future<void> updateUIPreferences({
+    bool? showFieldLabels,
+    bool? compactMode,
+    bool? highlightDifferences,
+  }) async {
+    final newSettings = _currentSettings.copyWith(
+      showFieldLabels: showFieldLabels,
+      compactMode: compactMode,
+      highlightDifferences: highlightDifferences,
+    );
     
-    if (newBackDisplays.contains(displayType)) {
-      newBackDisplays.remove(displayType);
-    } else {
-      newBackDisplays.add(displayType);
-    }
-
-    await updateBackDisplays(newBackDisplays);
+    await saveDisplaySettings(newSettings);
   }
 
-  /// Update settings (for Riverpod integration)
-  Future<void> updateSettings(CardDisplaySettings settings) async {
-    await saveSettings(settings);
+  /// Reset to default settings
+  Future<void> resetToDefaults() async {
+    await saveDisplaySettings(CardDisplaySettings.defaultSettings);
+    AppLogger.info('Card display settings reset to defaults');
+  }
+
+  /// Check if settings are valid
+  bool validateSettings(CardDisplaySettings settings) {
+    // Ensure at least one front field is enabled
+    if (!settings.hasFrontFields) {
+      AppLogger.error('No front fields enabled');
+      return false;
+    }
+    
+    // Ensure at least one back field is enabled
+    if (!settings.hasBackFields) {
+      AppLogger.error('No back fields enabled');
+      return false;
+    }
+    
+    return true;
+  }
+
+  /// Get settings summary for display
+  String getSettingsSummary(CardDisplaySettings settings) {
+    final frontFields = settings.enabledFrontFields.join(', ');
+    final backFields = settings.enabledBackFields.join(', ');
+    return 'Front: $frontFields | Back: $backFields | Mode: ${settings.displayModeName}';
+  }
+
+  /// Export settings as JSON string
+  Future<String> exportSettings() async {
+    final settings = await getDisplaySettings();
+    return jsonEncode(settings.toJson());
+  }
+
+  /// Import settings from JSON string
+  Future<void> importSettings(String jsonString) async {
+    try {
+      final settingsMap = jsonDecode(jsonString) as Map<String, dynamic>;
+      final settings = CardDisplaySettings.fromJson(settingsMap);
+      
+      if (validateSettings(settings)) {
+        await saveDisplaySettings(settings);
+        AppLogger.info('Settings imported successfully');
+      } else {
+        throw Exception('Invalid settings format');
+      }
+    } catch (e) {
+      AppLogger.error('Error importing settings', e);
+      rethrow;
+    }
+  }
+
+  /// Get recommended settings for different study goals
+  static CardDisplaySettings getRecommendedSettings(String studyGoal) {
+    switch (studyGoal.toLowerCase()) {
+      case 'beginner':
+        return CardDisplaySettings(
+          showKana: true,
+          showHiragana: true,
+          showEnglish: true,
+          showNotes: true,
+          displayMode: CardDisplayMode.recognition,
+          showFieldLabels: true,
+        );
+      case 'intermediate':
+        return CardDisplaySettings(
+          showKana: true,
+          showKanji: true,
+          showEnglish: true,
+          showNotes: true,
+          showContext: true,
+          displayMode: CardDisplayMode.mixed,
+          showFieldLabels: false,
+        );
+      case 'advanced':
+        return CardDisplaySettings(
+          showKanji: true,
+          showEnglish: true,
+          showNotes: true,
+          showContext: true,
+          displayMode: CardDisplayMode.production,
+          compactMode: true,
+          highlightDifferences: true,
+        );
+      case 'kanji_focus':
+        return CardDisplaySettings(
+          showKanji: true,
+          showEnglish: true,
+          showNotes: true,
+          showPronunciation: true,
+          displayMode: CardDisplayMode.recognition,
+          showFieldLabels: true,
+        );
+      case 'conversation':
+        return CardDisplaySettings(
+          showKana: true,
+          showEnglish: true,
+          showContext: true,
+          displayMode: CardDisplayMode.production,
+          compactMode: true,
+        );
+      default:
+        return CardDisplaySettings.defaultSettings;
+    }
+  }
+
+  /// Apply recommended settings for a study goal
+  Future<void> applyRecommendedSettings(String studyGoal) async {
+    final recommended = getRecommendedSettings(studyGoal);
+    await saveDisplaySettings(recommended);
+    AppLogger.info('Applied recommended settings for: $studyGoal');
   }
 }

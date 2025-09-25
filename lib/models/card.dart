@@ -33,7 +33,7 @@ class Card {
       notes: map['notes'],
       isFavorite: (map['is_favorite'] ?? 0) == 1,
       isDirty: (map['is_dirty'] ?? 0) == 1,
-      updatedAt: map['updated_at'],
+      updatedAt: map['updated_at'] != null ? int.tryParse(map['updated_at'].toString()) : null,
       deckName: map['deck_name'], // From JOIN with Deck
       fields: map['fields'] != null 
           ? (map['fields'] as List<dynamic>).map((f) => CardField.fromMap(f)).toList()

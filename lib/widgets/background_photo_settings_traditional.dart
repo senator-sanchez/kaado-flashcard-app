@@ -265,7 +265,7 @@ class _BackgroundPhotoSettingsTraditionalState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Starting image picker...'),
-          backgroundColor: Colors.blue,
+          backgroundColor: context.appTheme.primaryBlue,
         ),
       );
       
@@ -277,7 +277,7 @@ class _BackgroundPhotoSettingsTraditionalState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Background photo updated successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: context.appTheme.correctButton,
           ),
         );
       } else {

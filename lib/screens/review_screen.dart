@@ -74,7 +74,7 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     _loadIncorrectCards();
-    _cardDisplayService.loadSettings();
+      _cardDisplayService.getDisplaySettings();
     
     // Initialize animation controllers
     _swipeAnimationController = AnimationController(
@@ -277,7 +277,6 @@ class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMix
       showAnswer: _showAnswer,
       isCompleted: _isReviewCompleted(),
       onTap: _isReviewCompleted() ? _resetReview : _toggleAnswer,
-      displaySettings: _cardDisplayService.currentSettings,
       onEdit: _showEditCardDialog,
     );
 

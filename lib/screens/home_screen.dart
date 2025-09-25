@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import '../models/flashcard.dart';
 import '../models/category.dart' as app_models;
 import '../models/spaced_repetition.dart';
+import '../models/user_progress.dart';
 
 // Project imports - Services
 import '../services/database_service.dart';
@@ -18,6 +19,11 @@ import '../services/card_display_service.dart';
 import '../services/theme_service.dart';
 import '../services/background_photo_service.dart';
 import '../services/spaced_repetition_service.dart';
+import '../services/srs_algorithm.dart';
+
+// Project imports - Screens
+import 'card_display_settings_screen.dart';
+import 'spaced_repetition_settings_screen.dart';
 
 // Project imports - Constants
 import '../constants/app_colors.dart';
@@ -58,6 +64,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _showAnswer = false;
   int _currentCategoryId = 0;
   bool _isReviewMode = false;
+  // Note: _showReviewPrompt is now determined by database query results // Show review prompt after left swipe
+  
+  // Review-specific score tracking
+  int _reviewCorrectAnswers = 0;
+  int _reviewTotalAttempts = 0;
+  
+  // Note: Incorrect cards are now stored in the IncorrectCards database table
   
   // === Previous Card History ===
   final List<Map<String, dynamic>> _cardHistory = []; // List of {index, answer} maps
@@ -107,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _initializeAppAsync() async {
     try {
       // Load settings first (lightweight operation)
-      _cardDisplayService.loadSettings();
+      _cardDisplayService.getDisplaySettings();
       
       // Clean up orphaned cards in background
       _cleanupOrphanedCards();
@@ -201,24 +214,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Load cards for a specific category when selected from navigation
   Future<void> _loadCardsForCategory(int categoryId) async {
-    print('DEBUG: _loadCardsForCategory - Loading cards for category ID: $categoryId');
     setState(() => _isLoading = true);
     try {
       List<Flashcard> cards;
       
       // Check if this is the Favorites deck by getting the category name
       final category = await _databaseService.getCategoryById(categoryId);
-      print('DEBUG: _loadCardsForCategory - Category name: ${category?.name}');
       if (category != null && category.name.toLowerCase() == 'favorites') {
-        print('DEBUG: _loadCardsForCategory - Loading favorites cards');
         // Special case for Favorites - use getFavoriteCards
         cards = await _databaseService.getFavoriteCards();
       } else {
-        print('DEBUG: _loadCardsForCategory - Loading regular deck cards');
         // Use getCardsByCategory for regular decks
         cards = await _databaseService.getCardsByCategory(categoryId);
       }
-      print('DEBUG: _loadCardsForCategory - Loaded ${cards.length} cards');
       
       setState(() {
         _currentCards = cards;
@@ -229,7 +237,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _cardHistory.clear(); // Clear card history
         _isLoading = false;
         _currentCategoryId = categoryId;
+        // Note: Review prompt visibility is now determined by database query
+        
+        // Exit review mode when navigating to a different deck
+        if (_isReviewMode) {
+          _isReviewMode = false;
+          _reviewCorrectAnswers = 0;
+          _reviewTotalAttempts = 0;
+        }
       });
+      
+      // Note: Review prompt visibility is now determined by database query in UI
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -262,7 +280,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Save updated spaced repetition data
         await _databaseService.upsertSpacedRepetitionCard(updatedCard);
         
+    // If answered correctly, mark as correct in database (regardless of mode)
+    if (isCorrect) {
+          
+          // Mark card as correct in database
+          await _databaseService.markCardCorrectInDatabase(currentCard.id);
+          
+          // Update UI to reflect the change
+          setState(() {
+            // Update progress counters
+            if (!_isReviewMode) {
+              _correctAnswers++;
+              _totalAttempts++;
+            } else {
+              _reviewCorrectAnswers++;
+              _reviewTotalAttempts++;
+            }
+          });
+        }
+        
       } catch (e) {
+        AppLogger.error('Error in spaced repetition tracking: $e');
         // Handle error silently - don't interrupt the user experience
       }
     }
@@ -291,10 +329,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     
     setState(() {
-      // Track attempts and correct answers
-      _totalAttempts++;
-      if (isCorrect) {
-        _correctAnswers++;
+      // Track score based on mode
+      if (_isReviewMode) {
+        // Review mode: use review-specific tracking
+        _reviewTotalAttempts++;
+        if (isCorrect) {
+          _reviewCorrectAnswers++;
+        }
+      } else {
+        // Main deck: use main deck tracking
+        _totalAttempts++;
+        if (isCorrect) {
+          _correctAnswers++;
+        }
       }
       
       // Add current card to history before advancing
@@ -305,6 +352,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       
       _advanceToNextCard();
     });
+    
+    // Note: Swipe operation flag will be cleared by _completeSwipeAction when animation completes
   }
 
   /// Skips the current card without recording an answer.
@@ -318,6 +367,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       
       _advanceToNextCard();
     });
+    
+    // Note: Swipe operation flag will be cleared by _animateCardExit() after animation completes
   }
 
   /// Goes back to the previous card and undoes the last answer.
@@ -378,8 +429,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return (_correctAnswers / _totalAttempts) * 100;
   }
   
+  double _getReviewCorrectPercentage() {
+    if (_currentCards.isEmpty || _reviewTotalAttempts == 0) return 0.0;
+    return (_reviewCorrectAnswers / _reviewTotalAttempts) * 100;
+  }
+  
   void _closeFabMenu() {
     _fabMenuKey.currentState?.closeMenu();
+  }
+  
+  /// Exit review mode and return to main deck
+  void _exitReviewMode() {
+    
+    setState(() {
+      _isReviewMode = false;
+      _reviewCorrectAnswers = 0;
+      _reviewTotalAttempts = 0;
+    });
+    
+    // Check if there are still incorrect cards in database
+    _checkForRemainingIncorrectCards();
   }
 
   void _shuffleCards() {
@@ -428,7 +497,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     try {
       final categoryId = _currentCards.first.categoryId;
-      final refreshedCards = await _databaseService.getCardsByCategory(categoryId);
+      List<Flashcard> refreshedCards;
+      
+      // Check if this is the Favorites deck
+      final category = await _databaseService.getCategoryById(categoryId);
+      if (category != null && category.name.toLowerCase() == 'favorites') {
+        refreshedCards = await _databaseService.getFavoriteCards();
+      } else {
+        refreshedCards = await _databaseService.getCardsByCategory(categoryId);
+      }
+      
+      if (refreshedCards.isNotEmpty) {
+      }
     
     setState(() {
         _currentCards = refreshedCards;
@@ -447,13 +527,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
-    return ListenableBuilder(
-      listenable: ThemeService(),
-      builder: (context, child) {
-    
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
       drawer: KaadoNavigationDrawer(
+        key: const ValueKey('navigation_drawer'), // Stable key to prevent recreation
         databaseService: _databaseService,
         onCategorySelected: _loadCardsForCategory,
         onResetDatabase: () {
@@ -461,20 +538,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         },
         onThemeChanged: (themeMode) => _onThemeChangedFromDrawer(themeMode),
         onCloseFab: _closeFabMenu,
+        onTriggerIncorrectCardsReview: _startIncorrectCardsReview,
+        onTriggerSpacedRepetitionReview: _startSpacedRepetitionReview,
       ),
       appBar: AppBar(
         backgroundColor: appTheme.appBarBackground,
         foregroundColor: appTheme.appBarIcon,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: appTheme.appBarIcon),
-            onPressed: () {
-              _closeFabMenu();
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
+        leading: _isReviewMode 
+          ? IconButton(
+              icon: Icon(Icons.arrow_back, color: appTheme.appBarIcon),
+              onPressed: () {
+                _exitReviewMode();
+              },
+            )
+          : Builder(
+              builder: (context) => IconButton(
+                icon: Icon(Icons.menu, color: appTheme.appBarIcon),
+                onPressed: () {
+                  _closeFabMenu();
+                  Scaffold.of(context).openDrawer();
+                },
+              ),
+            ),
         title: Text(
           _isReviewMode ? AppStrings.reviewMode : _getCurrentCategoryTitle(),
           style: theme.textTheme.titleLarge?.copyWith(
@@ -483,6 +569,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: appTheme.appBarIcon),
+            onSelected: (value) {
+              switch (value) {
+                case 'card_settings':
+                  _openCardDisplaySettings();
+                  break;
+                case 'spaced_repetition':
+                  _openSpacedRepetitionSettings();
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'card_settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility, color: appTheme.primaryText),
+                    SizedBox(width: 8),
+                    Text('Card Display Settings'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'spaced_repetition',
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule, color: appTheme.primaryText),
+                    SizedBox(width: 8),
+                    Text('Spaced Repetition Settings'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -494,9 +617,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSizes.paddingLarge),
               child: ProgressBar(
-                progressText: _currentCards.isEmpty ? '0/0' : '${_currentCardIndex + 1}/${_currentCards.length}',
-                scoreText: _currentCards.isEmpty ? 'No Cards' : '${_getCorrectPercentage().toInt()}% Correct',
-                progressValue: _currentCards.isEmpty ? 0.0 : _currentCardIndex / _currentCards.length,
+                progressText: _currentCards.isEmpty ? '0/0' : '${math.min(_currentCardIndex + 1, _currentCards.length)}/${_currentCards.length}',
+                scoreText: _currentCards.isEmpty ? 'No Cards' : _isReviewMode ? '${_getReviewCorrectPercentage().toInt()}% Correct' : '${_getCorrectPercentage().toInt()}% Correct',
+                progressValue: _currentCards.isEmpty ? 0.0 : math.min(_currentCardIndex / _currentCards.length, 1.0),
                 isCompleted: _currentCards.isEmpty || _currentCardIndex >= _currentCards.length,
               ),
             ),
@@ -510,83 +633,83 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     // Card space placeholder
                     Container(
-                      height: MediaQuery.of(context).size.height * 0.35,
+                      height: MediaQuery.of(context).size.height * 0.3,
                     ),
 
                     SizedBox(height: 8.0),
 
                     // Incorrect Cards Review Row (behind the card)
-                FutureBuilder<int>(
-                  future: _getIncorrectCardsCount(),
-                  builder: (context, snapshot) {
-                    final incorrectCount = snapshot.data ?? 0;
-                    if (incorrectCount > 0 && !_isReviewMode) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: AppSizes.paddingLarge),
-                        child: Container(
-                          margin: EdgeInsets.only(top: 4.0), // Close to main card
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16.0, // Using v10.2 reviewSectionPaddingHorizontal
-                            vertical: 12.0    // Using v10.2 reviewSectionPaddingVertical
-                          ),
-                          decoration: BoxDecoration(
-                            color: appTheme.cardBackground.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(12.0), // Using v10.2 reviewSectionBorderRadius
-                            border: Border.all(color: appTheme.divider, width: 1),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: appTheme.secondaryText,
-                                size: 20,
-                              ),
-                              SizedBox(width: AppSizes.spacingSmall),
-                              Expanded(
-                                child: Text(
-                                  '$incorrectCount card${incorrectCount == 1 ? '' : 's'} wrong',
-                                  style: TextStyle(
-                                    color: appTheme.secondaryText,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                    if (!_isReviewMode)
+                      FutureBuilder<int>(
+                        future: _getIncorrectCardsCountFromDatabase(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data! > 0) {
+                            return Padding(
+                              padding: EdgeInsets.symmetric(horizontal: AppSizes.paddingLarge),
+                              child: Container(
+                                margin: EdgeInsets.only(top: 4.0), // Close to main card
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16.0, // Using v10.2 reviewSectionPaddingHorizontal
+                                  vertical: 12.0    // Using v10.2 reviewSectionPaddingVertical
+                                ),
+                                decoration: BoxDecoration(
+                                  color: appTheme.cardBackground.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(12.0), // Using v10.2 reviewSectionBorderRadius
+                                  border: Border.all(color: appTheme.divider, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: appTheme.secondaryText,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: AppSizes.spacingSmall),
+                                    Expanded(
+                                      child: Text(
+                                        '${snapshot.data} card${snapshot.data == 1 ? '' : 's'} wrong',
+                                        style: TextStyle(
+                                          color: appTheme.secondaryText,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        _closeFabMenu();
+                                        _startIncorrectCardsReview();
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: theme.primaryColor,
+                                        foregroundColor: appTheme.buttonTextOnColored,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 16.0, // Using v10.2 reviewButtonPaddingHorizontal
+                                          vertical: 8.0     // Using v10.2 reviewButtonPaddingVertical
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8.0), // Using v10.2 reviewButtonBorderRadius
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Review',
+                                        style: TextStyle(
+                                          color: appTheme.buttonTextOnColored,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  _closeFabMenu();
-                                  _startIncorrectCardsReview();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: theme.primaryColor,
-                                  foregroundColor: appTheme.buttonTextOnColored,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 16.0, // Using v10.2 reviewButtonPaddingHorizontal
-                                    vertical: 8.0     // Using v10.2 reviewButtonPaddingVertical
-                                  ),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.0), // Using v10.2 reviewButtonBorderRadius
-                                  ),
-                                ),
-                                child: Text(
-                                  'Review',
-                                  style: TextStyle(
-                                    color: appTheme.buttonTextOnColored,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return SizedBox.shrink();
-                  },
-                ),
+                            );
+                          }
+                          return SizedBox.shrink();
+                        },
+                      ),
 
                 // Spaced Repetition Review Row (for cards due for review)
                 if (!_isReviewMode && _currentCategoryId > 0)
@@ -781,8 +904,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
       ),
     );
-      },
-    );
   }
 
   /// Build the card widget - always the same structure
@@ -854,9 +975,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
   
-  Future<int> _getIncorrectCardsCount() async {
-    return await _databaseService.getIncorrectCardsForCategory(_currentCategoryId).then((cards) => cards.length);
+  // Note: _hasIncorrectCardsInDatabase method removed - now using _getIncorrectCardsCountFromDatabase
+  
+  /// Get count of incorrect cards for current deck from database
+  Future<int> _getIncorrectCardsCountFromDatabase() async {
+    try {
+      final incorrectCards = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
+      return incorrectCards.length;
+    } catch (e) {
+      return 0;
+    }
   }
+  
+  /// Check for remaining incorrect cards and exit review mode if none
+  Future<void> _checkForRemainingIncorrectCards() async {
+    try {
+      final incorrectCards = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
+      
+      if (incorrectCards.isEmpty) {
+        // Don't automatically exit review mode - let user manually return to main deck
+        // This allows the user to try again and again until satisfied
+      }
+    } catch (e) {
+      AppLogger.error('Error checking remaining incorrect cards: $e');
+    }
+  }
+  
+  // Note: _getIncorrectCardsCount method removed - now using _getIncorrectCardsCountFromDatabase
 
   String _getCurrentCategoryTitle() {
     if (_currentCategoryId == 0) {
@@ -874,21 +1019,68 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
   
   void _startIncorrectCardsReview() async {
-    // Load incorrect cards for the current category
-    final incorrectCards = await _databaseService.getIncorrectCardsForCategory(_currentCategoryId);
+    // Prevent multiple simultaneous calls
+    if (_isReviewMode) {
+      return;
+    }
     
-    if (incorrectCards.isNotEmpty) {
-      setState(() {
-        _isReviewMode = true;
-        _currentCards = incorrectCards;
-        _currentCardIndex = 0;
-        _showAnswer = false;
-      });
+    try {
+      // Get incorrect card IDs from database
+      final incorrectCardIds = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
+      
+      if (incorrectCardIds.isNotEmpty) {
+        // Load the actual card objects for the incorrect card IDs
+        final allCards = await _databaseService.getCardsByCategory(_currentCategoryId);
+        final incorrectCards = allCards.where((card) => incorrectCardIds.contains(card.id)).toList();
+        
+        if (incorrectCards.isNotEmpty) {
+          setState(() {
+            _isReviewMode = true;
+            _currentCards = incorrectCards;
+            _currentCardIndex = 0;
+            _showAnswer = false;
+            _reviewCorrectAnswers = 0;
+            _reviewTotalAttempts = 0;
+          });
+        }
+      } else {
+        // Show message that no incorrect cards are available for review
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No incorrect cards to review. Try studying some cards first!'),
+              backgroundColor: context.appTheme.primaryBlue,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Error starting incorrect cards review: $e');
     }
   }
   
-  void _startSpacedRepetitionReview() {
-    // Spaced repetition review functionality
+  void _startSpacedRepetitionReview() async {
+    // Load cards due for spaced repetition review
+    final dueCards = await _databaseService.getFlashcardsDueForReview(_currentCategoryId);
+    
+    if (dueCards.isNotEmpty) {
+      setState(() {
+        _isReviewMode = true;
+        _currentCards = dueCards;
+        _currentCardIndex = 0;
+        _showAnswer = false;
+      });
+    } else {
+      // Show message that no cards are due for review
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No cards are due for review right now.'),
+            backgroundColor: context.appTheme.primaryBlue,
+          ),
+        );
+      }
+    }
   }
   
   void _backToOriginalDeck() async {
@@ -958,10 +1150,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Handle pan end - determine swipe action with improved logic
   void _onPanEnd(DragEndDetails details) {
-    if (_currentCards.isEmpty || !_isDragging || _isAnimationBlocked) return;
+    if (_currentCards.isEmpty || !_isDragging) return;
+    
+    // Block additional pan end events immediately
+    if (_isAnimationBlocked) return;
     
     setState(() {
       _isDragging = false;
+      _isAnimationBlocked = true; // Block immediately to prevent multiple calls
     });
     
     final velocity = details.velocity.pixelsPerSecond;
@@ -979,35 +1175,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Complete the swipe action based on direction
-  void _completeSwipeAction(Offset velocity) {
+  Future<void> _completeSwipeAction(Offset velocity) async {
+    // Set swipe operation flag to prevent database calls during swipe
+    KaadoNavigationDrawer.setSwipeOperation(true);
+    
     final delta = _dragOffset;
     final absDx = delta.dx.abs();
     final absDy = delta.dy.abs();
-    final isLastCard = _currentCardIndex >= _currentCards.length - 1;
+    // final isLastCard = _currentCardIndex >= _currentCards.length - 1; // Unused variable
     
     if (absDx > absDy) {
       // Horizontal swipe
       if (delta.dx > 0) {
-        // Swipe right - correct
-        _recordAnswer(isCorrect: true);
+        // Swipe right - correct (quality 5)
+        await _handleSwipeGesture('right');
+        _recordAnswer(isCorrect: true); // Record correct answer and advance to next card
         _animateCardExit(true);
       } else {
-        // Swipe left - incorrect
-        _recordAnswer(isCorrect: false);
+        // Swipe left - incorrect (quality 0)
+        await _handleSwipeGesture('left');
+        _recordAnswer(isCorrect: false); // Record incorrect answer and advance to next card
+        
+        // Mark card as incorrect in database (persistent storage)
+        final currentCard = _getCurrentFlashcard();
+        if (currentCard.id > 0) {
+          await _databaseService.markCardIncorrectInDatabase(currentCard.id, _currentCategoryId);
+        }
+        
+        // Note: Review prompt visibility is now determined by database query
         _animateCardExit(false);
       }
     } else {
       // Vertical swipe
       if (delta.dy < 0) {
-        // Swipe up - skip
-        if (isLastCard) {
-          _skipCard();
-        } else {
-          _animateCardExit(null);
-          _skipCard();
-        }
+        // Swipe up - skip (no quality change)
+        _animateCardExit(null);
+        _skipCard();
       } else {
-        // Swipe down - go back to previous card
+        // Swipe down - go back to previous card (no quality change)
         if (_cardHistory.isNotEmpty) {
           _goBackToPreviousCard();
         } else {
@@ -1016,14 +1221,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
     }
+    
+    // Clear swipe operation flag after entire swipe process completes
+    KaadoNavigationDrawer.setSwipeOperation(false);
   }
 
   /// Animate card exit in the swipe direction
   void _animateCardExit(bool? isCorrect) {
-    setState(() {
-      _isAnimationBlocked = true;
-    });
-    
     // Determine exit direction and distance
     final screenWidth = MediaQuery.of(context).size.width;
     final exitDistance = screenWidth * 1.5; // Exit far off screen
@@ -1044,6 +1248,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _animateToPosition(exitOffset, Duration(milliseconds: 300)).then((_) {
       _resetCardPosition();
       setState(() {});
+      // Note: Swipe operation flag will be cleared by _recordAnswer when it completes
     });
   }
 
@@ -1152,8 +1357,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Container(
       width: double.infinity,
       constraints: BoxConstraints(
-        minHeight: 200,
-        maxHeight: 200,
+        minHeight: MediaQuery.of(context).size.height * 0.3,
+        maxHeight: MediaQuery.of(context).size.height * 0.3,
       ),
       decoration: BoxDecoration(
         color: appTheme.cardBackground,
@@ -1203,26 +1408,91 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final currentCard = _getCurrentFlashcard();
       await _databaseService.toggleFavorite(currentCard.id);
       
-      // Update the current card in the list with the new favorite status
-      final updatedCard = Flashcard(
-        id: currentCard.id,
-        kana: currentCard.kana,
-        hiragana: currentCard.hiragana,
-        english: currentCard.english,
-        romaji: currentCard.romaji,
-        scriptType: currentCard.scriptType,
-        notes: currentCard.notes,
-        isFavorite: !currentCard.isFavorite, // Toggle the favorite status
-        categoryId: currentCard.categoryId,
-        categoryName: currentCard.categoryName,
-      );
-      
-      setState(() {
-        _currentCards[_currentCardIndex] = updatedCard;
-      });
+      // Refresh the card from the database to get the latest favorite status
+      final refreshedCard = await _databaseService.getCardById(currentCard.id);
+      if (refreshedCard != null) {
+        setState(() {
+          _currentCards[_currentCardIndex] = refreshedCard;
+        });
+        
+        // Navigation drawer will refresh when opened next time
+      }
     } catch (e) {
       // Handle error silently or show a snackbar
       AppLogger.error('Error toggling favorite', e);
+    }
+  }
+
+  /// Handle swipe gesture with SRS algorithm integration
+  Future<void> _handleSwipeGesture(String direction) async {
+    if (_currentCards.isEmpty) return;
+    
+    try {
+      final currentCard = _getCurrentFlashcard();
+      final quality = SRSAlgorithm.getQualityFromSwipe(direction);
+      
+      // Skip if no quality change (up/down swipes)
+      if (quality == -1) {
+        AppLogger.info('Swipe gesture: $direction (no quality change)');
+        return;
+      }
+      
+      AppLogger.info('Swipe gesture: $direction (quality: $quality)');
+      
+      // Get or create user progress for this card
+      UserProgress? progress = await _databaseService.getUserProgress(currentCard.id);
+      if (progress == null) {
+        // Initialize progress for new card
+        progress = SRSAlgorithm.initializeProgress(currentCard.id);
+      }
+      
+      // Calculate new progress using SRS algorithm
+      final updatedProgress = SRSAlgorithm.calculateNextReview(
+        current: progress,
+        quality: quality,
+      );
+      
+      // Save updated progress to database
+      await _databaseService.saveUserProgress(updatedProgress);
+      
+      // Update local statistics only for main deck, not review mode
+      if (!_isReviewMode) {
+        if (quality >= 3) {
+          _correctAnswers++;
+        }
+        _totalAttempts++;
+      }
+      
+      AppLogger.info('SRS updated: Card ${currentCard.id}, Quality: $quality, New interval: ${updatedProgress.interval} days');
+      
+    } catch (e) {
+      AppLogger.error('Error handling swipe gesture', e);
+    }
+  }
+
+  /// Open card display settings
+  void _openCardDisplaySettings() async {
+    try {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => CardDisplaySettingsScreen(),
+        ),
+      );
+    } catch (e) {
+      AppLogger.error('Error opening card display settings', e);
+    }
+  }
+
+  /// Open spaced repetition settings
+  void _openSpacedRepetitionSettings() async {
+    try {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => SpacedRepetitionSettingsScreen(),
+        ),
+      );
+    } catch (e) {
+      AppLogger.error('Error opening spaced repetition settings', e);
     }
   }
   

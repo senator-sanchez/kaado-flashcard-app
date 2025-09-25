@@ -1,7 +1,6 @@
 // Dart imports
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 
 // Flutter imports
 import 'package:flutter/services.dart';
@@ -31,24 +30,53 @@ class DatabaseService {
   DatabaseService._internal();
 
   static Database? _database;
+  static bool _isInitializing = false;
 
   /// Get the database instance, initializing if necessary
   Future<Database> get database async {
     if (_database != null) return _database!;
+    
+    // Prevent multiple simultaneous initializations
+    if (_isInitializing) {
+      // Wait for the current initialization to complete with timeout
+      int attempts = 0;
+      while (_isInitializing && attempts < 100) { // 1 second timeout
+        await Future.delayed(Duration(milliseconds: 10));
+        attempts++;
+      }
+      if (_database != null) return _database!;
+    }
+    
+    _isInitializing = true;
+    try {
     _database = await _initDatabase();
     return _database!;
+    } catch (e) {
+      _database = null; // Reset on error
+      rethrow;
+    } finally {
+      _isInitializing = false;
+    }
   }
 
   /// Initialize the database using the migrated database file
   Future<Database> _initDatabase() async {
+    try {
     final dbPath = await _getDatabasePath();
     
     final db = await openDatabase(
       dbPath,
-      readOnly: false,
+        readOnly: false,
     );
+      
+      // Create IncorrectCards table if it doesn't exist
+      await _createIncorrectCardsTable(db);
     
     return db;
+    } catch (e) {
+      AppLogger.error('Error initializing database: $e');
+      rethrow;
+    }
   }
 
 
@@ -57,27 +85,18 @@ class DatabaseService {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbPath = join(documentsDirectory.path, 'japanese.db');
     
-    print('DEBUG: _getDatabasePath - Documents directory: ${documentsDirectory.path}');
-    print('DEBUG: _getDatabasePath - Database path: $dbPath');
-    
     // Copy database from assets to app documents directory
     final dbFile = File(dbPath);
     if (!dbFile.existsSync()) {
-      print('DEBUG: _getDatabasePath - Database file does not exist, copying from assets...');
       AppLogger.info('Copying database from assets...');
       try {
         final ByteData data = await rootBundle.load('assets/database/japanese.db');
       await dbFile.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
-        print('DEBUG: _getDatabasePath - Database copied successfully to: $dbPath');
         AppLogger.info('Database copied to: $dbPath');
       } catch (e) {
-        print('DEBUG: _getDatabasePath - Error copying database: $e');
         AppLogger.error('Error copying database from assets: $e');
         rethrow;
       }
-    } else {
-      print('DEBUG: _getDatabasePath - Using existing database: $dbPath');
-      AppLogger.info('Using existing database: $dbPath');
     }
     
     return dbPath;
@@ -89,7 +108,6 @@ class DatabaseService {
   Future<List<Deck>> getDeckTree() async {
     try {
     final db = await database;
-    print('DEBUG: getDeckTree - Database path: ${db.path}');
     
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
       SELECT 
@@ -105,7 +123,12 @@ class DatabaseService {
           THEN 1 
           ELSE 0 
         END as has_children,
-        (SELECT COUNT(*) FROM Card c WHERE c.deck_id = d.id) as card_count,
+        CASE 
+          WHEN d.name = 'Favorites' THEN 
+            (SELECT COUNT(*) FROM DeckMembership dm WHERE dm.deck_id = d.id)
+          ELSE 
+            (SELECT COUNT(*) FROM Card c WHERE c.deck_id = d.id)
+        END as card_count,
         '' as full_path
       FROM Deck d
       ORDER BY 
@@ -114,24 +137,13 @@ class DatabaseService {
         d.name
     ''');
 
-    print('DEBUG: getDeckTree - Query returned ${maps.length} decks');
-    if (maps.isNotEmpty) {
-      print('DEBUG: First few decks:');
-      for (int i = 0; i < math.min(5, maps.length); i++) {
-        print('DEBUG: Deck ${i}: id=${maps[i]['id']}, name=${maps[i]['name']}, parent_id=${maps[i]['parent_id']}');
-      }
+    final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
+    final result = _buildDeckHierarchy(allDecks);
+    return result;
+    } catch (e) {
+      AppLogger.error('Error in getDeckTree: $e');
+      return [];
     }
-
-      final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
-      print('DEBUG: getDeckTree - Built ${allDecks.length} deck objects');
-      final result = _buildDeckHierarchy(allDecks);
-      print('DEBUG: getDeckTree - Final hierarchy has ${result.length} root decks');
-      return result;
-      } catch (e) {
-        print('DEBUG: getDeckTree - Error occurred: $e');
-        AppLogger.error('Error in getDeckTree: $e');
-        return [];
-      }
   }
 
   /// Build the hierarchical deck structure from flat list
@@ -171,7 +183,7 @@ class DatabaseService {
 
   /// Get cards with their fields for a specific deck
   Future<List<Card>> getCardsWithFieldsByDeck(int deckId) async {
-    print('DEBUG: getCardsWithFieldsByDeck - Loading cards for deck ID: $deckId');
+    // Loading cards for deck ID: $deckId
     final db = await database;
     
     // OPTIMIZED: Single query instead of N+1 queries
@@ -310,6 +322,56 @@ class DatabaseService {
     return Card.fromMap(cardData).copyWith(fields: fields);
   }
 
+  /// Get card fields for a specific card
+  Future<List<CardField>> getCardFields(int cardId) async {
+    final db = await database;
+    
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT 
+        cf.id,
+        cf.card_id,
+        cf.field_definition_id,
+        cf.field_value,
+        cf.is_dirty,
+        cf.updated_at,
+        fd.field_type,
+        fd.is_front,
+        fd.is_back,
+        fd.sort_order
+      FROM CardField cf
+      INNER JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
+      WHERE cf.card_id = ?
+      ORDER BY fd.sort_order
+    ''', [cardId]);
+    
+    return maps.map((map) => CardField.fromMap(map)).toList();
+  }
+
+  /// Helper method to create Flashcard from Card and CardFields
+  Flashcard _createFlashcardFromCard(Card card, List<CardField> cardFields) {
+    String getFieldValue(String fieldType) {
+      final field = cardFields.firstWhere(
+        (f) => f.fieldType == fieldType,
+        orElse: () => CardField(id: 0, cardId: 0, fieldDefinitionId: 0, fieldValue: ''),
+      );
+      return field.fieldValue;
+    }
+
+    return Flashcard(
+      id: card.id,
+      kana: getFieldValue('kana'),
+      hiragana: getFieldValue('hiragana').isEmpty ? null : getFieldValue('hiragana'),
+      english: getFieldValue('english'),
+      romaji: getFieldValue('romaji').isEmpty ? null : getFieldValue('romaji'),
+      notes: card.notes,
+      isFavorite: card.isFavorite,
+      categoryId: card.deckId,
+      categoryName: card.deckName,
+      card: card,
+      fields: cardFields,
+    );
+  }
+
   /// Add a new card with its fields
   Future<int> addCardWithFields(int deckId, Map<String, String> fieldValues, {String? notes, bool isFavorite = false}) async {
     final db = await database;
@@ -389,7 +451,7 @@ class DatabaseService {
       final cardInfo = await txn.query('Card', columns: ['deck_id'], where: 'id = ?', whereArgs: [cardId]);
       if (cardInfo.isEmpty) return;
       
-      final deckId = cardInfo.first['deck_id'] as int;
+      // final deckId = cardInfo.first['deck_id'] as int; // Unused variable
       
       // Delete card fields
       await txn.delete('CardField', where: 'card_id = ?', whereArgs: [cardId]);
@@ -417,21 +479,28 @@ class DatabaseService {
       );
       
       if (existing.isNotEmpty) {
+        // For existing records, remove the id field to avoid UNIQUE constraint errors
+        final map = progress.toMap();
+        map.remove('id');
         await db.update(
         'UserProgress',
-        progress.toMap(),
+        map,
         where: 'card_id = ? AND user_id = ?',
         whereArgs: [progress.cardId, progress.userId],
         );
       } else {
-      await db.insert('UserProgress', progress.toMap());
+        // For new records, remove the id field to let the database auto-increment
+        final map = progress.toMap();
+        map.remove('id');
+        await db.insert('UserProgress', map);
     }
   }
 
   /// Mark a card as incorrect and update progress
   Future<void> markCardIncorrect(int cardId, int categoryId, String categoryName) async {
+    // Marking card $cardId as incorrect for category $categoryId
     try {
-    final db = await database;
+      final db = await database;
       final now = DateTime.now();
       
       final existing = await db.query(
@@ -453,12 +522,13 @@ class DatabaseService {
           updatedAt: now.toIso8601String(),
         );
     
-    await db.update(
+        await db.update(
           'UserProgress',
           updated.toMap(),
           where: 'card_id = ?',
           whereArgs: [cardId],
         );
+        // Updated existing progress: times_seen=${updated.timesSeen}, times_correct=${updated.timesCorrect}
       } else {
         final newProgress = UserProgress(
           id: 0,
@@ -481,8 +551,10 @@ class DatabaseService {
         );
         
         await db.insert('UserProgress', newProgress.toMap());
+        // Created new progress: times_seen=${newProgress.timesSeen}, times_correct=${newProgress.timesCorrect}
       }
     } catch (e) {
+      // Error: $e
       AppLogger.error('Error marking card incorrect', e);
     }
   }
@@ -520,8 +592,8 @@ class DatabaseService {
           isDirty: true,
           updatedAt: now.toIso8601String(),
         );
-        
-        await db.update(
+    
+    await db.update(
           'UserProgress',
           updated.toMap(),
           where: 'card_id = ?',
@@ -559,15 +631,18 @@ class DatabaseService {
 
   /// Get categories (wraps getDeckTree for compatibility)
   Future<List<app_models.Category>> getCategoryTree() async {
-    final deckTree = await getDeckTree();
-    return deckTree.map((deck) => app_models.Category.fromDeck(deck)).toList();
+    try {
+      final deckTree = await getDeckTree();
+      return deckTree.map((deck) => app_models.Category.fromDeck(deck)).toList();
+    } catch (e) {
+      AppLogger.error('Error in getCategoryTree: $e');
+      return [];
+    }
   }
 
   /// Get cards by category (wraps getCardsWithFieldsByDeck for compatibility)
   Future<List<Flashcard>> getCardsByCategory(int categoryId) async {
-      print('DEBUG: getCardsByCategory - Loading cards for category ID: $categoryId');
       final cards = await getCardsWithFieldsByDeck(categoryId);
-      print('DEBUG: getCardsByCategory - getCardsWithFieldsByDeck returned ${cards.length} cards');
     
     // Get the Favorites deck ID and all favorite card IDs in one query
     final db = await database;
@@ -601,7 +676,7 @@ class DatabaseService {
       SELECT 1 FROM DeckMembership dm
       INNER JOIN Deck d ON dm.deck_id = d.id
       WHERE d.name = 'Favorites' AND d.parent_id = (
-        SELECT id FROM Deck WHERE language = 'Japanese' AND parent_id IS NULL
+        SELECT id FROM Deck WHERE parent_id IS NULL
       ) AND dm.card_id = ?
     ''', [cardId]);
     
@@ -611,10 +686,10 @@ class DatabaseService {
 
   /// Get deck by ID
   Future<Deck?> getDeckById(int deckId) async {
-    final db = await database;
-    
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT 
+      final db = await database;
+      
+      final List<Map<String, dynamic>> maps = await db.rawQuery('''
+        SELECT 
         d.id,
         d.name,
         d.language,
@@ -706,8 +781,8 @@ class DatabaseService {
         SELECT id FROM Deck 
         WHERE language = 'Japanese' AND parent_id IS NULL
         ORDER BY id LIMIT 1
-      ''');
-      
+    ''');
+    
       if (japaneseDeckResult.isEmpty) {
         throw Exception('Japanese deck not found - cannot create Favorites deck');
       }
@@ -750,7 +825,7 @@ class DatabaseService {
     final favoritesResult = await db.rawQuery('''
       SELECT id FROM Deck 
       WHERE name = 'Favorites' AND parent_id = (
-        SELECT id FROM Deck WHERE language = 'Japanese' AND parent_id IS NULL
+        SELECT id FROM Deck WHERE parent_id IS NULL
       )
     ''');
     
@@ -811,7 +886,7 @@ class DatabaseService {
       ''', [cardId]);
       
       final fields = fieldMaps.map((fieldMap) => CardField.fromMap(fieldMap)).toList();
-      final card = Card.fromMap(cardMap).copyWith(fields: fields);
+      final card = Card.fromMap(cardMap).copyWith(fields: fields, isFavorite: true);
       favoriteCards.add(Flashcard.fromCard(card));
     }
     
@@ -920,6 +995,87 @@ class DatabaseService {
     return null;
   }
 
+  /// Create IncorrectCards table if it doesn't exist
+  Future<void> _createIncorrectCardsTable([Database? db]) async {
+    try {
+      final database = db ?? await this.database;
+      
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS IncorrectCards (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          card_id INTEGER NOT NULL,
+          deck_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (card_id) REFERENCES Card(id) ON DELETE CASCADE,
+          FOREIGN KEY (deck_id) REFERENCES Deck(id) ON DELETE CASCADE
+        )
+      ''');
+    } catch (e) {
+      AppLogger.error('Error creating IncorrectCards table: $e');
+    }
+  }
+
+  /// Mark a card as incorrect in the database (persistent storage)
+  Future<void> markCardIncorrectInDatabase(int cardId, int deckId) async {
+    try {
+      final db = await database;
+      
+      // Check if card is already marked as incorrect
+      final existing = await db.query(
+        'IncorrectCards',
+        where: 'card_id = ? AND deck_id = ?',
+        whereArgs: [cardId, deckId],
+      );
+      
+      if (existing.isEmpty) {
+        // Insert new incorrect card record
+        await db.insert('IncorrectCards', {
+          'card_id': cardId,
+          'deck_id': deckId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error marking card as incorrect: $e');
+    }
+  }
+
+  /// Remove a card from incorrect status in the database
+  Future<void> markCardCorrectInDatabase(int cardId) async {
+    try {
+    final db = await database;
+    
+      // Remove the card from IncorrectCards table
+    await db.delete(
+        'IncorrectCards',
+        where: 'card_id = ?',
+        whereArgs: [cardId],
+      );
+    } catch (e) {
+      AppLogger.error('Error removing card from incorrect status: $e');
+    }
+  }
+
+  /// Get incorrect cards from database (persistent storage)
+  Future<List<int>> getIncorrectCardsFromDatabase(int deckId) async {
+    try {
+    final db = await database;
+      
+      // Get all cards in the deck that are marked as incorrect
+      final result = await db.query(
+        'IncorrectCards',
+        columns: ['card_id'],
+        where: 'deck_id = ?',
+        whereArgs: [deckId],
+      );
+      
+      return result.map((row) => row['card_id'] as int).toList();
+    } catch (e) {
+      AppLogger.error('Error getting incorrect cards: $e');
+      return [];
+    }
+  }
+
   /// Upsert spaced repetition card (compatibility method)
   Future<void> upsertSpacedRepetitionCard(SpacedRepetitionCard card) async {
     final userProgress = UserProgress(
@@ -957,6 +1113,49 @@ class DatabaseService {
       }
     }
     
+    return flashcards;
+  }
+
+  /// Get recently incorrect cards for category (cards answered incorrectly in last session)
+  Future<List<Flashcard>> getRecentlyIncorrectCardsForCategory(int categoryId) async {
+    // Querying for category $categoryId
+    final db = await database;
+    final now = DateTime.now();
+    final oneHourAgo = now.subtract(Duration(hours: 1)).toIso8601String();
+    // One hour ago: $oneHourAgo
+    
+    
+    final result = await db.rawQuery('''
+      SELECT c.*, d.name as deck_name, d.language as deck_language
+      FROM Card c
+      INNER JOIN Deck d ON c.deck_id = d.id
+      INNER JOIN UserProgress up ON c.id = up.card_id
+      WHERE c.deck_id = ? 
+        AND up.last_reviewed >= ?
+        AND up.times_seen > up.times_correct
+      ORDER BY up.last_reviewed DESC
+    ''', [categoryId, oneHourAgo]);
+    
+    // Found ${result.length} cards in database
+    
+    final List<Flashcard> flashcards = [];
+    
+    for (final cardMap in result) {
+      final cardFields = await getCardFields(cardMap['id'] as int);
+      final card = Card.fromMap({
+        'id': cardMap['id'],
+        'deck_id': cardMap['deck_id'],
+        'notes': cardMap['notes'],
+        'is_dirty': cardMap['is_dirty'],
+        'updated_at': cardMap['updated_at'],
+        'deck_name': cardMap['deck_name'],
+      });
+      
+      final flashcard = _createFlashcardFromCard(card, cardFields);
+      flashcards.add(flashcard);
+    }
+    
+    // Returning ${flashcards.length} flashcards
     return flashcards;
   }
 
@@ -1051,7 +1250,7 @@ class DatabaseService {
       final japaneseDeckId = japaneseDeckResult.first['id'] as int;
       
       return await db.insert('Deck', {
-        'name': name,
+      'name': name,
         'language': 'Japanese',
         'parent_id': japaneseDeckId,
         'sort_order': -9999, // Special sort order to appear first
@@ -1075,7 +1274,7 @@ class DatabaseService {
     final db = await database;
     
     return await db.insert('Deck', {
-      'name': category.name,
+        'name': category.name,
       'language': category.description ?? 'Japanese',
       'parent_id': category.parentId,
       'sort_order': 0,
@@ -1099,6 +1298,141 @@ class DatabaseService {
     // review tracking is handled through UserProgress
     // For now, we'll just log that it was called
     AppLogger.info('markCardReviewed called for card $cardId in category $categoryId');
+  }
+
+  /// Get user progress for a specific card
+  Future<UserProgress?> getUserProgress(int cardId, {String userId = 'default'}) async {
+    final db = await database;
+    
+    final result = await db.rawQuery('''
+      SELECT * FROM UserProgress 
+      WHERE card_id = ? AND user_id = ?
+    ''', [cardId, userId]);
+    
+    if (result.isEmpty) return null;
+    
+    return UserProgress.fromMap(result.first);
+  }
+
+  /// Save or update user progress
+  Future<void> saveUserProgress(UserProgress progress) async {
+    final db = await database;
+    
+    if (progress.id == 0) {
+      // Insert new progress
+      await db.insert('UserProgress', progress.toMap());
+    } else {
+      // Update existing progress
+      await db.update(
+        'UserProgress', 
+        progress.toMap(), 
+        where: 'id = ?',
+        whereArgs: [progress.id]
+      );
+    }
+  }
+
+  /// Get all user progress for a deck
+  Future<List<UserProgress>> getUserProgressForDeck(int deckId, {String userId = 'default'}) async {
+    final db = await database;
+    
+    final result = await db.rawQuery('''
+      SELECT up.* FROM UserProgress up
+      INNER JOIN Card c ON up.card_id = c.id
+      WHERE c.deck_id = ? AND up.user_id = ?
+      ORDER BY up.next_review ASC
+    ''', [deckId, userId]);
+    
+    return result.map((map) => UserProgress.fromMap(map)).toList();
+  }
+
+  /// Get cards due for review in a deck
+  Future<List<UserProgress>> getCardsDueForReview(int deckId, {String userId = 'default'}) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    
+    final result = await db.rawQuery('''
+      SELECT up.* FROM UserProgress up
+      INNER JOIN Card c ON up.card_id = c.id
+      WHERE c.deck_id = ? AND up.user_id = ? 
+      AND (up.next_review IS NULL OR up.next_review <= ?)
+      ORDER BY up.next_review ASC
+    ''', [deckId, userId, now]);
+    
+    return result.map((map) => UserProgress.fromMap(map)).toList();
+  }
+
+  /// Get flashcards due for review in a deck
+  Future<List<Flashcard>> getFlashcardsDueForReview(int deckId, {String userId = 'default'}) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    
+    final result = await db.rawQuery('''
+      SELECT c.*, d.name as deck_name, d.language as deck_language
+      FROM Card c
+      INNER JOIN Deck d ON c.deck_id = d.id
+      INNER JOIN UserProgress up ON c.id = up.card_id
+      WHERE c.deck_id = ? AND up.user_id = ? 
+      AND (up.next_review IS NULL OR up.next_review <= ?)
+      ORDER BY up.next_review ASC
+    ''', [deckId, userId, now]);
+    
+    final List<Flashcard> flashcards = [];
+    
+    for (final cardMap in result) {
+      final cardFields = await getCardFields(cardMap['id'] as int);
+      final card = Card.fromMap({
+        'id': cardMap['id'],
+        'deck_id': cardMap['deck_id'],
+        'notes': cardMap['notes'],
+        'is_dirty': cardMap['is_dirty'],
+        'updated_at': cardMap['updated_at'],
+        'deck_name': cardMap['deck_name'],
+      });
+      
+      final flashcard = _createFlashcardFromCard(card, cardFields);
+      flashcards.add(flashcard);
+    }
+    
+    return flashcards;
+  }
+
+  /// Get SRS statistics for a deck
+  Future<Map<String, dynamic>> getSRSStats(int deckId, {String userId = 'default'}) async {
+    final db = await database;
+    
+    // Get total cards in deck
+    final totalResult = await db.rawQuery('''
+      SELECT COUNT(*) as count FROM Card WHERE deck_id = ?
+    ''', [deckId]);
+    final totalCards = totalResult.first['count'] as int;
+    
+    // Get cards with progress
+    final progressResult = await db.rawQuery('''
+      SELECT 
+        COUNT(*) as total_progress,
+        SUM(CASE WHEN up.is_mastered = 1 THEN 1 ELSE 0 END) as mastered,
+        SUM(CASE WHEN up.next_review IS NULL OR up.next_review <= ? THEN 1 ELSE 0 END) as due,
+        AVG(up.ease_factor) as avg_ease_factor
+      FROM UserProgress up
+      INNER JOIN Card c ON up.card_id = c.id
+      WHERE c.deck_id = ? AND up.user_id = ?
+    ''', [DateTime.now().toIso8601String(), deckId, userId]);
+    
+    final stats = progressResult.first;
+    final totalProgress = stats['total_progress'] as int? ?? 0;
+    final mastered = stats['mastered'] as int? ?? 0;
+    final due = stats['due'] as int? ?? 0;
+    final avgEaseFactor = stats['avg_ease_factor'] as double? ?? 0.0;
+    
+    return {
+      'totalCards': totalCards,
+      'cardsWithProgress': totalProgress,
+      'masteredCards': mastered,
+      'dueCards': due,
+      'masteryPercentage': totalProgress > 0 ? (mastered / totalProgress) * 100 : 0.0,
+      'averageEaseFactor': avgEaseFactor,
+    };
   }
     
 }

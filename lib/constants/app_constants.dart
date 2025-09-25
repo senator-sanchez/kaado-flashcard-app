@@ -9,6 +9,16 @@ class AppConstants {
   static const String appName = AppStrings.appName;
   static const String appVersion = AppStrings.appVersion;
   
+  // ===== CARD CONSTANTS =====
+  static const double cardMinHeight = AppSizes.cardMinHeight;
+  static const double cardMinHeightWeb = AppSizes.cardMinHeight;
+  static const double cardPadding = AppSizes.paddingMedium;
+  static const double cardBackTextSize = AppSizes.fontXLarge;
+  static const double cardCompletionIconSize = AppSizes.iconXLarge;
+  static const double cardCompletionSpacing = AppSizes.spacingMedium;
+  static const double cardCompletionTitleSize = AppSizes.fontTitle;
+  static const double cardCompletionSubtitleSize = AppSizes.fontLarge;
+
   // ===== RESPONSIVE DESIGN METHODS =====
   
   /// Get maximum content width based on screen size

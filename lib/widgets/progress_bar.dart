@@ -27,7 +27,7 @@ class ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context); // Unused variable
     final appTheme = context.appTheme;
     
     return Container(
@@ -76,7 +76,7 @@ class ProgressBar extends StatelessWidget {
                   flex: (progressValue * AppConstants.progressMultiplier).round(),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isCompleted ? theme.colorScheme.secondary : theme.primaryColor,
+                      color: isCompleted ? Colors.amber : appTheme.primaryBlue,
                       borderRadius: BorderRadius.circular(AppConstants.progressBarBorderRadius),
                     ),
                   ),

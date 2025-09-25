@@ -1,105 +1,239 @@
-/// Card display type enumeration
-enum CardDisplayType {
-  kana,
-  hiragana,
-  english,
-  romaji;
-  
-  String get displayName {
-    switch (this) {
-      case CardDisplayType.kana:
-        return 'Kana (Japanese characters)';
-      case CardDisplayType.hiragana:
-        return 'Hiragana';
-      case CardDisplayType.english:
-        return 'English';
-      case CardDisplayType.romaji:
-        return 'Romaji (Romanized)';
-    }
-  }
-  
-  String get description {
-    switch (this) {
-      case CardDisplayType.kana:
-        return 'Japanese characters';
-      case CardDisplayType.hiragana:
-        return 'Hiragana script';
-      case CardDisplayType.english:
-        return 'English translation';
-      case CardDisplayType.romaji:
-        return 'Romanized pronunciation';
-    }
-  }
+/// Card display mode enumeration
+enum CardDisplayMode {
+  recognition, // See Japanese, guess English
+  production,  // See English, produce Japanese
+  mixed,       // Random front/back combinations
 }
 
 /// Card display settings model
+/// 
+/// Comprehensive settings for customizing card display behavior.
+/// This is critical for language learning flexibility and different study modes.
 class CardDisplaySettings {
-  final CardDisplayType frontDisplay;
-  final List<CardDisplayType> backDisplays;
+  // Front card display options
+  final bool showKana;
+  final bool showHiragana;
+  final bool showKanji;
+  final bool showRomaji;
+  
+  // Back card display options
+  final bool showEnglish;
+  final bool showNotes;
+  final bool showPronunciation;
+  final bool showContext;
+  
+  // Study mode settings
+  final CardDisplayMode displayMode;
+  
+  // UI preferences
+  final bool showFieldLabels;
+  final bool compactMode;
+  final bool highlightDifferences;
 
   const CardDisplaySettings({
-    required this.frontDisplay,
-    required this.backDisplays,
+    // Front card options
+    this.showKana = true,
+    this.showHiragana = false,
+    this.showKanji = false,
+    this.showRomaji = false,
+    
+    // Back card options
+    this.showEnglish = true,
+    this.showNotes = true,
+    this.showPronunciation = false,
+    this.showContext = false,
+    
+    // Study mode
+    this.displayMode = CardDisplayMode.recognition,
+    
+    // UI preferences
+    this.showFieldLabels = true,
+    this.compactMode = false,
+    this.highlightDifferences = false,
   });
 
-  /// Default card display settings
+  /// Default card display settings for new users
   static const CardDisplaySettings defaultSettings = CardDisplaySettings(
-    frontDisplay: CardDisplayType.kana,
-    backDisplays: [CardDisplayType.english, CardDisplayType.hiragana],
+    showKana: true,
+    showEnglish: true,
+    showNotes: true,
+    displayMode: CardDisplayMode.recognition,
+    showFieldLabels: true,
   );
 
   /// Create a copy with updated values
   CardDisplaySettings copyWith({
-    CardDisplayType? frontDisplay,
-    List<CardDisplayType>? backDisplays,
+    // Front card options
+    bool? showKana,
+    bool? showHiragana,
+    bool? showKanji,
+    bool? showRomaji,
+    
+    // Back card options
+    bool? showEnglish,
+    bool? showNotes,
+    bool? showPronunciation,
+    bool? showContext,
+    
+    // Study mode
+    CardDisplayMode? displayMode,
+    
+    // UI preferences
+    bool? showFieldLabels,
+    bool? compactMode,
+    bool? highlightDifferences,
   }) {
     return CardDisplaySettings(
-      frontDisplay: frontDisplay ?? this.frontDisplay,
-      backDisplays: backDisplays ?? this.backDisplays,
+      showKana: showKana ?? this.showKana,
+      showHiragana: showHiragana ?? this.showHiragana,
+      showKanji: showKanji ?? this.showKanji,
+      showRomaji: showRomaji ?? this.showRomaji,
+      showEnglish: showEnglish ?? this.showEnglish,
+      showNotes: showNotes ?? this.showNotes,
+      showPronunciation: showPronunciation ?? this.showPronunciation,
+      showContext: showContext ?? this.showContext,
+      displayMode: displayMode ?? this.displayMode,
+      showFieldLabels: showFieldLabels ?? this.showFieldLabels,
+      compactMode: compactMode ?? this.compactMode,
+      highlightDifferences: highlightDifferences ?? this.highlightDifferences,
     );
+  }
+
+  /// Get display mode name
+  String get displayModeName {
+    switch (displayMode) {
+      case CardDisplayMode.recognition:
+        return 'Recognition Mode';
+      case CardDisplayMode.production:
+        return 'Production Mode';
+      case CardDisplayMode.mixed:
+        return 'Mixed Mode';
+    }
+  }
+
+  /// Get display mode description
+  String get displayModeDescription {
+    switch (displayMode) {
+      case CardDisplayMode.recognition:
+        return 'See Japanese, guess English';
+      case CardDisplayMode.production:
+        return 'See English, produce Japanese';
+      case CardDisplayMode.mixed:
+        return 'Random front/back combinations';
+    }
+  }
+
+  /// Check if any front field is enabled
+  bool get hasFrontFields {
+    return showKana || showHiragana || showKanji || showRomaji;
+  }
+
+  /// Check if any back field is enabled
+  bool get hasBackFields {
+    return showEnglish || showNotes || showPronunciation || showContext;
+  }
+
+  /// Get list of enabled front fields
+  List<String> get enabledFrontFields {
+    final fields = <String>[];
+    if (showKana) fields.add('Kana');
+    if (showHiragana) fields.add('Hiragana');
+    if (showKanji) fields.add('Kanji');
+    if (showRomaji) fields.add('Romaji');
+    return fields;
+  }
+
+  /// Get list of enabled back fields
+  List<String> get enabledBackFields {
+    final fields = <String>[];
+    if (showEnglish) fields.add('English');
+    if (showNotes) fields.add('Notes');
+    if (showPronunciation) fields.add('Pronunciation');
+    if (showContext) fields.add('Context');
+    return fields;
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is CardDisplaySettings &&
-        other.frontDisplay == frontDisplay &&
-        _listEquals(other.backDisplays, backDisplays);
+        other.showKana == showKana &&
+        other.showHiragana == showHiragana &&
+        other.showKanji == showKanji &&
+        other.showRomaji == showRomaji &&
+        other.showEnglish == showEnglish &&
+        other.showNotes == showNotes &&
+        other.showPronunciation == showPronunciation &&
+        other.showContext == showContext &&
+        other.displayMode == displayMode &&
+        other.showFieldLabels == showFieldLabels &&
+        other.compactMode == compactMode &&
+        other.highlightDifferences == highlightDifferences;
   }
 
   @override
-  int get hashCode => frontDisplay.hashCode ^ backDisplays.hashCode;
-
-  bool _listEquals<T>(List<T> a, List<T> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
+  int get hashCode {
+    return Object.hash(
+      showKana,
+      showHiragana,
+      showKanji,
+      showRomaji,
+      showEnglish,
+      showNotes,
+      showPronunciation,
+      showContext,
+      displayMode,
+      showFieldLabels,
+      compactMode,
+      highlightDifferences,
+    );
   }
 
   /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
-      'frontDisplay': frontDisplay.name,
-      'backDisplays': backDisplays.map((e) => e.name).toList(),
+      'showKana': showKana,
+      'showHiragana': showHiragana,
+      'showKanji': showKanji,
+      'showRomaji': showRomaji,
+      'showEnglish': showEnglish,
+      'showNotes': showNotes,
+      'showPronunciation': showPronunciation,
+      'showContext': showContext,
+      'displayMode': displayMode.name,
+      'showFieldLabels': showFieldLabels,
+      'compactMode': compactMode,
+      'highlightDifferences': highlightDifferences,
     };
   }
 
   /// Create from JSON
   factory CardDisplaySettings.fromJson(Map<String, dynamic> json) {
     return CardDisplaySettings(
-      frontDisplay: CardDisplayType.values.firstWhere(
-        (e) => e.name == json['frontDisplay'],
-        orElse: () => CardDisplayType.kana,
+      showKana: json['showKana'] ?? true,
+      showHiragana: json['showHiragana'] ?? false,
+      showKanji: json['showKanji'] ?? false,
+      showRomaji: json['showRomaji'] ?? false,
+      showEnglish: json['showEnglish'] ?? true,
+      showNotes: json['showNotes'] ?? true,
+      showPronunciation: json['showPronunciation'] ?? false,
+      showContext: json['showContext'] ?? false,
+      displayMode: CardDisplayMode.values.firstWhere(
+        (e) => e.name == json['displayMode'],
+        orElse: () => CardDisplayMode.recognition,
       ),
-      backDisplays: (json['backDisplays'] as List<dynamic>?)
-          ?.map((e) => CardDisplayType.values.firstWhere(
-                (type) => type.name == e,
-                orElse: () => CardDisplayType.english,
-              ))
-          .toList() ??
-          [CardDisplayType.english, CardDisplayType.hiragana],
+      showFieldLabels: json['showFieldLabels'] ?? true,
+      compactMode: json['compactMode'] ?? false,
+      highlightDifferences: json['highlightDifferences'] ?? false,
     );
+  }
+
+  @override
+  String toString() {
+    return 'CardDisplaySettings('
+        'front: ${enabledFrontFields.join(', ')}, '
+        'back: ${enabledBackFields.join(', ')}, '
+        'mode: $displayModeName'
+        ')';
   }
 }
