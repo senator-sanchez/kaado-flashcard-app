@@ -335,6 +335,145 @@ CREATE TABLE IF NOT EXISTS UserProgress (
 - **Monitor Performance**: Use Flutter DevTools for performance analysis
 - **Test Edge Cases**: Ensure proper handling of empty states and error conditions
 
+## **GitHub Workflow & Version Management**
+
+### **Repository Information**
+- **GitHub Repository**: `https://github.com/senator-sanchez/kaado-flashcard-app`
+- **Current Working Directory**: `C:\Users\Clayt\Flutter_Apps\Kaado\kaadoapp_v12`
+- **Latest Version**: v12.1 (Complete code cleanup and knowledge base documentation)
+
+### **Version Incrementing Process**
+The preferred workflow for version management follows this pattern:
+
+#### **1. Version Numbering Convention**
+- **Major Version**: v12.x (significant feature additions or architectural changes)
+- **Minor Version**: v12.1, v12.2, v12.3 (feature improvements, bug fixes, documentation)
+- **Current Pattern**: Increment minor version for each significant update
+
+#### **2. Git Workflow Process**
+```bash
+# 1. Check current status and version
+git status
+git tag --sort=-version:refname
+
+# 2. Add all changes
+git add .
+
+# 3. Commit with descriptive message
+git commit -m "v12.x: [Brief description]
+
+- [Feature 1]: Description
+- [Feature 2]: Description
+- [Technical improvement]: Description
+- [Documentation update]: Description"
+
+# 4. Create new branch for version
+git checkout -b v12.x-branch
+
+# 5. Push branch to GitHub
+git push -u origin v12.x-branch
+
+# 6. Create annotated tag with detailed release notes
+git tag -a v12.x -m "v12.x: [Comprehensive title]
+
+Features:
+- [Feature 1]: Detailed description
+- [Feature 2]: Detailed description
+
+Technical Improvements:
+- [Technical improvement 1]: Description
+- [Technical improvement 2]: Description
+
+Bug Fixes:
+- [Bug fix 1]: Description
+- [Bug fix 2]: Description"
+
+# 7. Push tag to GitHub
+git push origin v12.x
+
+# 8. Verify everything is pushed
+git status
+git tag --sort=-version:refname
+```
+
+#### **3. Commit Message Format**
+```
+v12.x: [Brief descriptive title]
+
+- [Category]: [Description]
+- [Category]: [Description]
+- [Category]: [Description]
+```
+
+**Categories used:**
+- **Features**: New functionality added
+- **Fixes**: Bug fixes and issue resolutions
+- **Improvements**: Performance and code quality enhancements
+- **Documentation**: Updates to documentation and knowledge base
+- **Refactoring**: Code restructuring and optimization
+- **Dependencies**: Package and dependency updates
+
+#### **4. Tag Message Format**
+```
+v12.x: [Comprehensive title]
+
+Features:
+- [Feature 1]: Detailed description with impact
+- [Feature 2]: Detailed description with impact
+
+Technical Improvements:
+- [Improvement 1]: Technical details and benefits
+- [Improvement 2]: Technical details and benefits
+
+Bug Fixes:
+- [Fix 1]: Issue description and resolution
+- [Fix 2]: Issue description and resolution
+
+Breaking Changes:
+- [If any]: Description of breaking changes and migration steps
+```
+
+#### **5. Branch Naming Convention**
+- **Version Branches**: `v12.x-branch`
+- **Feature Branches**: `feature/[feature-name]`
+- **Hotfix Branches**: `hotfix/[issue-description]`
+
+#### **6. Current Repository Structure**
+```
+Branches:
+- master (main branch)
+- v11.1-branch
+- v11.2-branch  
+- v11.3-branch
+- v12.0-branch
+- v12.1-branch (current)
+
+Tags:
+- v12.1 (latest)
+- v12.0
+- v11.3
+- v11.2
+- v11.1
+```
+
+#### **7. Release Process Checklist**
+- [ ] All changes committed and tested
+- [ ] Version number incremented appropriately
+- [ ] Comprehensive commit message written
+- [ ] New branch created for version
+- [ ] Branch pushed to GitHub
+- [ ] Annotated tag created with detailed release notes
+- [ ] Tag pushed to GitHub
+- [ ] Status verified (clean working tree)
+- [ ] Tags confirmed on GitHub
+
+### **Version History**
+- **v12.1** (2025-01-25): Complete code cleanup and knowledge base documentation
+- **v12.0**: Previous stable version
+- **v11.3**: Previous version
+- **v11.2**: Previous version
+- **v11.1**: Previous version
+
 ## **Future Architecture Considerations**
 
 ### **Planned Improvements**
