@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/flashcard.dart';
@@ -20,7 +21,7 @@ import '../constants/app_sizes.dart';
 /// - Validation and error handling
 /// - Save and cancel actions
 /// - Clean, user-friendly interface
-class CardEditDialog extends StatefulWidget {
+class CardEditDialog extends ConsumerStatefulWidget {
   final int categoryId;
   final Flashcard? card;
 
@@ -34,10 +35,10 @@ class CardEditDialog extends StatefulWidget {
   });
 
   @override
-  State<CardEditDialog> createState() => _CardEditDialogState();
+  ConsumerState<CardEditDialog> createState() => _CardEditDialogState();
 }
 
-class _CardEditDialogState extends State<CardEditDialog> {
+class _CardEditDialogState extends ConsumerState<CardEditDialog> {
   final _formKey = GlobalKey<FormState>();
   final _kanaController = TextEditingController();
   final _hiraganaController = TextEditingController();

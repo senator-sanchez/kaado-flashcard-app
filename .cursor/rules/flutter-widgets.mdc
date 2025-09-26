@@ -1,0 +1,50 @@
+---
+globs: *.dart
+description: Flutter widget development guidelines
+---
+
+# Flutter Widget Development
+
+## Widget Structure
+- Use const constructors for immutable widgets
+- Create small, private widget classes instead of methods like `Widget _build...`
+- Prefer stateless widgets:
+  - Use ConsumerWidget with Riverpod for state-dependent widgets
+  - Use HookConsumerWidget when combining Riverpod and Flutter Hooks
+- Use trailing commas for better formatting and diffs
+- Keep widget trees shallow to improve performance and readability
+- Break down large widgets into smaller, focused widgets
+
+## State Management
+- Use Riverpod to manage state
+  - Use keepAlive when needed to persist state
+- Use Freezed to manage UI states and data models
+- Controller always takes methods as input and updates the UI state
+- Implement proper cancellation of asynchronous operations when widgets are disposed
+
+## UI and Styling
+- Use Flutter's built-in widgets and create custom widgets
+- Implement responsive design using LayoutBuilder or MediaQuery
+- Use ThemeData to manage themes consistently
+- Use Theme.of(context).textTheme.titleLarge instead of deprecated names
+- Use AppLocalizations to manage translations
+- Implement RefreshIndicator for pull-to-refresh functionality
+- In TextFields, set appropriate textCapitalization, keyboardType, and textInputAction
+- Always include an errorBuilder when using Image.network
+
+## Navigation
+- Use AutoRoute to manage routes (type-safe, better for large apps)
+  - Use extras to pass data between pages
+  - Leverage code generation for type safety
+
+## Model Conventions
+- Use @JsonSerializable(fieldRename: FieldRename.snake) for models
+- Implement @JsonKey(includeFromJson: true, includeToJson: false) for read-only fields
+- Use @JsonValue(int) for enums that go to the database
+
+## Performance
+- Use const widgets where possible to optimize rebuilds
+- Implement list view optimizations (e.g., ListView.builder)
+- Use AssetImage for static images and cached_network_image for remote images
+- Optimize for Flutter performance metrics (first meaningful paint, time to interactive)
+- Avoid deeply nested widgets to reduce build complexity

@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/category.dart' as app_models;
@@ -30,15 +31,15 @@ import '../widgets/navigation_drawer.dart';
 /// - Card management (view, edit, add, delete)
 /// - Search and filtering capabilities
 /// - Clean, intuitive UI for content management
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
-  final DatabaseService _databaseService = DatabaseService();
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  late DatabaseService _databaseService;
   List<app_models.Category> _categories = [];
   bool _isLoading = true;
   String _searchQuery = '';
@@ -46,6 +47,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    _databaseService = ref.read(databaseServiceProvider);
     _loadCategories();
   }
 

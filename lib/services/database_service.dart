@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/category.dart' as app_models;
@@ -21,6 +22,7 @@ import '../models/card.dart';
 import '../models/card_field.dart';
 import '../models/user_progress.dart';
 import 'app_logger.dart';
+import 'performance_monitor_service.dart';
 
 /// Service for managing database operations with the Japanese language database
 /// Uses the new migrated schema with Deck, Card+CardField, and UserProgress
@@ -34,7 +36,6 @@ class DatabaseService {
   
   /// Force re-initialization of the database (useful for debugging)
   static Future<void> resetDatabase() async {
-    AppLogger.info('Resetting database...');
     _database?.close();
     _database = null;
     _isInitializing = false;
@@ -43,7 +44,6 @@ class DatabaseService {
   /// Ensure database is fully initialized before operations
   Future<void> ensureDatabaseInitialized() async {
     try {
-      AppLogger.info('Ensuring database is initialized...');
       await database; // This will initialize if needed
       
       // Add a small delay for physical devices to ensure database is fully ready
@@ -53,7 +53,6 @@ class DatabaseService {
       final db = await database;
       await db.rawQuery('SELECT 1');
       
-      AppLogger.info('Database initialization verified and tested');
     } catch (e) {
       AppLogger.error('Failed to ensure database initialization: $e');
       rethrow;
@@ -77,9 +76,7 @@ class DatabaseService {
     
     _isInitializing = true;
     try {
-      AppLogger.info('Starting database initialization...');
     _database = await _initDatabase();
-      AppLogger.info('Database initialization completed successfully');
     return _database!;
     } catch (e) {
       AppLogger.error('Database initialization failed: $e');
@@ -93,9 +90,7 @@ class DatabaseService {
   /// Initialize the database using the migrated database file
   Future<Database> _initDatabase() async {
     try {
-      AppLogger.info('Starting database initialization...');
     final dbPath = await _getDatabasePath();
-      AppLogger.info('Database path obtained: $dbPath');
       
       // Verify the database file exists and is readable
       final dbFile = File(dbPath);
@@ -105,25 +100,19 @@ class DatabaseService {
       
       // Check if database file is empty or corrupted
       final fileSize = dbFile.lengthSync();
-      AppLogger.info('Database file size: $fileSize bytes');
       if (fileSize == 0) {
         throw Exception('Database file is empty (0 bytes)');
       }
       if (fileSize < 1000) {
-        AppLogger.warning('Database file is very small ($fileSize bytes) - may be corrupted');
       }
       
-      AppLogger.info('Opening database connection...');
     final db = await openDatabase(
       dbPath,
         readOnly: false,
       );
-      AppLogger.info('Database connection opened successfully');
       
       // Create IncorrectCards table if it doesn't exist
-      AppLogger.info('Creating IncorrectCards table...');
       await _createIncorrectCardsTable(db);
-      AppLogger.info('IncorrectCards table created/verified');
     
     return db;
     } catch (e) {
@@ -140,19 +129,12 @@ class DatabaseService {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbPath = join(documentsDirectory.path, 'japanese.db');
     
-      AppLogger.info('Database path: $dbPath');
-      AppLogger.info('Documents directory: ${documentsDirectory.path}');
-      AppLogger.info('Documents directory exists: ${documentsDirectory.existsSync()}');
       
       // Copy database from assets to app documents directory
     final dbFile = File(dbPath);
       if (!dbFile.existsSync()) {
-        AppLogger.info('Database file does not exist, copying from assets...');
         await _copyDatabaseFromAssets(dbFile);
       } else {
-        AppLogger.info('Database file already exists at: $dbPath');
-        AppLogger.info('Database file size: ${dbFile.lengthSync()} bytes');
-        AppLogger.info('Database file exists: ${dbFile.existsSync()}');
     }
     
     return dbPath;
@@ -166,55 +148,13 @@ class DatabaseService {
   // ===== DECK OPERATIONS =====
 
   /// Get the complete deck tree with hierarchical structure
+  /// Temporarily bypass isolate for debugging
   Future<List<Deck>> getDeckTree() async {
     try {
-      AppLogger.info('Getting deck tree...');
-    final db = await database;
-      AppLogger.info('Database connection established');
-    
-      // Test basic database connectivity
-      final testQuery = await db.rawQuery('SELECT COUNT(*) as count FROM Deck');
-      AppLogger.info('Database test query result: $testQuery');
       
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT 
-        d.id,
-        d.name,
-        d.language,
-        d.parent_id,
-        d.sort_order,
-        d.is_dirty,
-        d.updated_at,
-        CASE 
-          WHEN EXISTS(SELECT 1 FROM Deck child WHERE child.parent_id = d.id) 
-          THEN 1 
-          ELSE 0 
-        END as has_children,
-        CASE 
-          WHEN d.name = 'Favorites' THEN 
-            (SELECT COUNT(*) FROM DeckMembership dm WHERE dm.deck_id = d.id)
-          ELSE 
-            (SELECT COUNT(*) FROM Card c WHERE c.deck_id = d.id)
-        END as card_count,
-        '' as full_path
-      FROM Deck d
-      ORDER BY 
-        d.parent_id NULLS FIRST,
-        d.sort_order,
-        d.name
-    ''');
-
-      AppLogger.info('Found ${maps.length} decks in database');
-      
-      if (maps.isEmpty) {
-        AppLogger.warning('No decks found in database - this may indicate a database issue');
-        // Try to create a basic deck structure as fallback
-        return _createFallbackDeckStructure();
-      }
-      
-      final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
-      final result = _buildDeckHierarchy(allDecks);
-      AppLogger.info('Built deck hierarchy with ${result.length} root decks');
+      // Temporarily bypass isolate for debugging
+      final db = await database;
+      final result = await _getDeckTreeInIsolate(db);
       return result;
     } catch (e) {
       AppLogger.error('Error in getDeckTree: $e');
@@ -222,7 +162,6 @@ class DatabaseService {
       AppLogger.error('Stack trace: ${StackTrace.current}');
       
       // Return fallback deck structure
-      AppLogger.info('Returning fallback deck structure due to error');
       return _createFallbackDeckStructure();
     }
   }
@@ -234,22 +173,18 @@ class DatabaseService {
     
     while (attempts < maxAttempts) {
       try {
-        AppLogger.info('Attempt ${attempts + 1} to copy database from assets...');
         
         // Try the original asset path first
         final ByteData data = await rootBundle.load('assets/database/japanese.db');
-        AppLogger.info('Asset loaded successfully, size: ${data.lengthInBytes} bytes');
         
         // Ensure the directory exists
         final parentDir = dbFile.parent;
         if (!parentDir.existsSync()) {
-          AppLogger.info('Creating parent directory: ${parentDir.path}');
           await parentDir.create(recursive: true);
         }
         
         // Delete existing file if it exists (in case of corruption)
         if (dbFile.existsSync()) {
-          AppLogger.info('Deleting existing corrupted file...');
           await dbFile.delete();
         }
         
@@ -267,9 +202,6 @@ class DatabaseService {
           throw Exception('Database file size mismatch: expected ${data.lengthInBytes}, got $writtenSize');
         }
         
-        AppLogger.info('Database copied successfully to: ${dbFile.path}');
-        AppLogger.info('Database file size: $writtenSize bytes');
-        AppLogger.info('Database file exists: ${dbFile.existsSync()}');
         return; // Success
         
       } catch (e) {
@@ -291,7 +223,6 @@ class DatabaseService {
 
   /// Create a fallback deck structure when database fails
   List<Deck> _createFallbackDeckStructure() {
-    AppLogger.info('Creating fallback deck structure - empty structure');
     return []; // Return empty list - no hardcoded data
   }
 
@@ -331,82 +262,78 @@ class DatabaseService {
   // ===== CARD OPERATIONS =====
 
   /// Get cards with their fields for a specific deck
+  /// Direct database call (reverted from isolate for debugging)
   Future<List<Card>> getCardsWithFieldsByDeck(int deckId) async {
-    // Loading cards for deck ID: $deckId
-    final db = await database;
     
-    // OPTIMIZED: Single query instead of N+1 queries
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+    return await PerformanceMonitorService().trackOperation(
+      'getCardsWithFieldsByDeck',
+      () async {
+        final db = await database;
+    
+    // Get cards first
+    final List<Map<String, dynamic>> cardMaps = await db.rawQuery('''
       SELECT 
         c.id,
         c.deck_id,
         c.notes,
         c.is_dirty,
-        c.updated_at,
-        d.name as deck_name,
-        cf.id as field_id,
-        cf.field_definition_id,
-        cf.field_value,
-        cf.is_dirty as field_is_dirty,
-        cf.updated_at as field_updated_at,
-        fd.field_type,
-        fd.is_front,
-        fd.is_back,
-        fd.sort_order
+        c.updated_at
       FROM Card c
-      INNER JOIN Deck d ON c.deck_id = d.id
-      LEFT JOIN CardField cf ON c.id = cf.card_id
-      LEFT JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
       WHERE c.deck_id = ?
-      ORDER BY c.id, fd.sort_order
+      ORDER BY c.id
     ''', [deckId]);
-
-    // Group results by card to avoid N+1 problem
-    final Map<int, Map<String, dynamic>> cardMap = {};
-    final Map<int, List<CardField>> cardFields = {};
     
-    for (final map in maps) {
-      final cardId = map['id'] as int;
-      
-      // Store card data (only once per card)
-      if (!cardMap.containsKey(cardId)) {
-        cardMap[cardId] = {
-          'id': map['id'],
-          'deck_id': map['deck_id'],
-          'notes': map['notes'],
-          'is_dirty': map['is_dirty'],
-          'updated_at': map['updated_at'],
-          'deck_name': map['deck_name'],
-        };
-        cardFields[cardId] = [];
-      }
-      
-      // Add field data if it exists
-      if (map['field_id'] != null) {
-        cardFields[cardId]!.add(CardField.fromMap({
-          'id': map['field_id'],
-          'card_id': map['id'],
-          'field_definition_id': map['field_definition_id'],
-          'field_value': map['field_value'],
-          'is_dirty': map['field_is_dirty'],
-          'updated_at': map['field_updated_at'],
-          'field_type': map['field_type'],
-          'is_front': map['is_front'],
-          'is_back': map['is_back'],
-        }));
-      }
-    }
-    
-    // Build final card list
     final List<Card> cards = [];
-    for (final entry in cardMap.entries) {
-      final cardId = entry.key;
-      final cardData = entry.value;
-      final fields = cardFields[cardId] ?? [];
-      cards.add(Card.fromMap(cardData).copyWith(fields: fields));
+    
+    for (final cardMap in cardMaps) {
+      final cardId = cardMap['id'] as int;
+      
+      // Get fields for this card
+      final fieldMaps = await db.rawQuery('''
+        SELECT 
+          cf.id,
+          cf.card_id,
+          cf.field_definition_id,
+          cf.field_value,
+          cf.is_dirty,
+          cf.updated_at,
+          fd.field_type,
+          fd.is_front,
+          fd.is_back,
+          fd.sort_order
+        FROM CardField cf
+        LEFT JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
+        WHERE cf.card_id = ?
+        ORDER BY fd.sort_order
+      ''', [cardId]);
+      
+      final List<CardField> fields = fieldMaps.map((fieldMap) => CardField.fromMap({
+        'id': fieldMap['id'],
+        'card_id': fieldMap['card_id'],
+        'field_definition_id': fieldMap['field_definition_id'],
+        'field_value': fieldMap['field_value'],
+        'is_dirty': fieldMap['is_dirty'],
+        'updated_at': fieldMap['updated_at'],
+        'field_type': fieldMap['field_type'],
+        'is_front': fieldMap['is_front'],
+        'is_back': fieldMap['is_back'],
+      })).toList();
+      
+      // Create card with fields
+      final card = Card.fromMap({
+        'id': cardMap['id'],
+        'deck_id': cardMap['deck_id'],
+        'notes': cardMap['notes'],
+        'is_dirty': cardMap['is_dirty'],
+        'updated_at': cardMap['updated_at'],
+      }).copyWith(fields: fields);
+      
+      cards.add(card);
     }
     
     return cards;
+      },
+    );
   }
 
   /// Get a single card with its fields by ID - OPTIMIZED with single query
@@ -782,19 +709,30 @@ class DatabaseService {
   Future<List<app_models.Category>> getCategoryTree() async {
     try {
       final deckTree = await getDeckTree();
-      return deckTree.map((deck) => app_models.Category.fromDeck(deck)).toList();
+      final categories = deckTree.map((deck) => app_models.Category.fromDeck(deck)).toList();
+      return categories;
     } catch (e) {
       AppLogger.error('Error in getCategoryTree: $e');
+      AppLogger.error('Error type: ${e.runtimeType}');
       return [];
     }
   }
 
   /// Get cards by category (wraps getCardsWithFieldsByDeck for compatibility)
   Future<List<Flashcard>> getCardsByCategory(int categoryId) async {
-      final cards = await getCardsWithFieldsByDeck(categoryId);
+    
+    return await PerformanceMonitorService().trackOperation(
+      'getCardsByCategory',
+      () async => await _getCardsByCategoryFallback(categoryId),
+    );
+  }
+
+  /// Fallback method for getCardsByCategory (original implementation)
+  Future<List<Flashcard>> _getCardsByCategoryFallback(int categoryId) async {
+    final db = await database;
+    final cards = await getCardsWithFieldsByDeck(categoryId);
     
     // Get the Favorites deck ID and all favorite card IDs in one query
-    final db = await database;
     final favoritesResult = await db.rawQuery('''
       SELECT dm.card_id
       FROM DeckMembership dm
@@ -808,10 +746,12 @@ class DatabaseService {
         .map((row) => row['card_id'] as int)
         .toSet();
     
-    return cards.map((card) {
+    final flashcards = cards.map((card) {
       final isFavorite = favoriteCardIds.contains(card.id);
       return Flashcard.fromCard(card.copyWith(isFavorite: isFavorite));
     }).toList();
+    
+    return flashcards;
   }
 
   /// Get card by ID (wraps getCardWithFieldsById for compatibility)
@@ -1446,7 +1386,6 @@ class DatabaseService {
     // This is a compatibility method - in the new schema, 
     // review tracking is handled through UserProgress
     // For now, we'll just log that it was called
-    AppLogger.info('markCardReviewed called for card $cardId in category $categoryId');
   }
 
   /// Get user progress for a specific card
@@ -1583,5 +1522,184 @@ class DatabaseService {
       'averageEaseFactor': avgEaseFactor,
     };
   }
-    
 }
+
+// ===== ISOLATE FUNCTIONS =====
+
+/// Get deck tree in isolate
+Future<List<Deck>> _getDeckTreeInIsolate(Database db) async {
+  try {
+    // Test basic database connectivity
+    final testQuery = await db.rawQuery('SELECT COUNT(*) as count FROM Deck');
+    
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT 
+        d.id,
+        d.name,
+        d.language,
+        d.parent_id,
+        d.sort_order,
+        d.is_dirty,
+        d.updated_at,
+        CASE 
+          WHEN EXISTS(SELECT 1 FROM Deck child WHERE child.parent_id = d.id) 
+          THEN 1 
+          ELSE 0 
+        END as has_children,
+        CASE 
+          WHEN d.name = 'Favorites' THEN 
+            (SELECT COUNT(*) FROM DeckMembership dm WHERE dm.deck_id = d.id)
+          ELSE 
+            (SELECT COUNT(*) FROM Card c WHERE c.deck_id = d.id)
+        END as card_count,
+        '' as full_path
+      FROM Deck d
+      ORDER BY 
+        d.parent_id NULLS FIRST,
+        d.sort_order,
+        d.name
+    ''');
+
+    if (maps.isEmpty) {
+      return [];
+    }
+    
+    final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
+    return _buildDeckHierarchyInIsolate(allDecks);
+  } catch (e) {
+    return [];
+  }
+}
+
+/// Get cards with fields by deck in isolate
+Future<List<Card>> _getCardsWithFieldsByDeckInIsolate(Map<String, dynamic> params) async {
+  final db = params['database'] as Database;
+  final deckId = params['deckId'] as int;
+  
+  
+  try {
+    // SIMPLIFIED: First get cards, then get fields separately
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT 
+        c.id,
+        c.deck_id,
+        c.notes,
+        c.is_dirty,
+        c.updated_at,
+        d.name as deck_name
+      FROM Card c
+      INNER JOIN Deck d ON c.deck_id = d.id
+      WHERE c.deck_id = ?
+      ORDER BY c.id
+    ''', [deckId]);
+
+    if (maps.isNotEmpty) {
+    } else {
+      // Debug: Check if the deck exists
+      final deckCheck = await db.rawQuery('SELECT id, name FROM Deck WHERE id = ?', [deckId]);
+      
+      // Debug: Check if cards exist for this deck
+      final cardCheck = await db.rawQuery('SELECT COUNT(*) as count FROM Card WHERE deck_id = ?', [deckId]);
+      
+      // Debug: Check the actual query we're using
+      final testQuery = await db.rawQuery('''
+        SELECT c.id, c.deck_id, d.name as deck_name
+        FROM Card c
+        INNER JOIN Deck d ON c.deck_id = d.id
+        WHERE c.deck_id = ?
+        LIMIT 5
+      ''', [deckId]);
+    }
+
+    // Build cards from simplified query
+    final List<Card> cards = [];
+    
+    for (final map in maps) {
+      final cardId = map['id'] as int;
+      
+      // Get fields for this card separately
+      final fieldMaps = await db.rawQuery('''
+        SELECT 
+          cf.id,
+          cf.card_id,
+          cf.field_definition_id,
+          cf.field_value,
+          cf.is_dirty,
+          cf.updated_at,
+          fd.field_type,
+          fd.is_front,
+          fd.is_back,
+          fd.sort_order
+        FROM CardField cf
+        LEFT JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
+        WHERE cf.card_id = ?
+        ORDER BY fd.sort_order
+      ''', [cardId]);
+      
+      final List<CardField> fields = fieldMaps.map((fieldMap) => CardField.fromMap({
+        'id': fieldMap['id'],
+        'card_id': fieldMap['card_id'],
+        'field_definition_id': fieldMap['field_definition_id'],
+        'field_value': fieldMap['field_value'],
+        'is_dirty': fieldMap['is_dirty'],
+        'updated_at': fieldMap['updated_at'],
+        'field_type': fieldMap['field_type'],
+        'is_front': fieldMap['is_front'],
+        'is_back': fieldMap['is_back'],
+      })).toList();
+      
+      // Create card with fields
+      final card = Card.fromMap({
+        'id': map['id'],
+        'deck_id': map['deck_id'],
+        'notes': map['notes'],
+        'is_dirty': map['is_dirty'],
+        'updated_at': map['updated_at'],
+      }).copyWith(fields: fields);
+      
+      cards.add(card);
+    }
+    
+    return cards;
+  } catch (e) {
+    return [];
+  }
+}
+
+/// Build deck hierarchy in isolate
+List<Deck> _buildDeckHierarchyInIsolate(List<Deck> allDecks) {
+  final Map<int, List<Deck>> childrenMap = {};
+  final List<Deck> rootDecks = [];
+  
+  // Group decks by parent ID
+  for (final deck in allDecks) {
+    if (deck.parentId == null) {
+      rootDecks.add(deck);
+    } else {
+      childrenMap.putIfAbsent(deck.parentId!, () => []).add(deck);
+    }
+  }
+  
+  // Build the hierarchy by creating new Deck objects with children
+  return _buildHierarchyRecursiveInIsolate(rootDecks, childrenMap);
+}
+
+/// Recursively build hierarchy with children in isolate
+List<Deck> _buildHierarchyRecursiveInIsolate(List<Deck> decks, Map<int, List<Deck>> childrenMap) {
+  final List<Deck> result = [];
+  
+  for (final deck in decks) {
+    final children = childrenMap[deck.id] ?? [];
+    final childrenWithHierarchy = _buildHierarchyRecursiveInIsolate(children, childrenMap);
+    
+    final deckWithChildren = deck.copyWith(children: childrenWithHierarchy);
+    result.add(deckWithChildren);
+  }
+  
+  return result;
+}
+
+/// Riverpod provider for DatabaseService
+final databaseServiceProvider = Provider<DatabaseService>((ref) {
+  return DatabaseService();
+});

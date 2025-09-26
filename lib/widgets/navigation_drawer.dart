@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Constants
 import '../constants/app_sizes.dart';
@@ -26,7 +27,7 @@ import 'background_photo_settings_traditional.dart';
 import 'shared/drawer_tile.dart';
 import 'shared/section_header.dart';
 
-class KaadoNavigationDrawer extends StatefulWidget {
+class KaadoNavigationDrawer extends ConsumerStatefulWidget {
   final DatabaseService databaseService;
   final Function(int categoryId)? onCategorySelected;
   final VoidCallback? onResetDatabase;
@@ -47,7 +48,7 @@ class KaadoNavigationDrawer extends StatefulWidget {
   });
 
   @override
-  State<KaadoNavigationDrawer> createState() => _KaadoNavigationDrawerState();
+  ConsumerState<KaadoNavigationDrawer> createState() => _KaadoNavigationDrawerState();
 
   /// Set swipe operation flag to prevent database calls during swipe gestures
   static void setSwipeOperation(bool isSwipe) {
@@ -62,7 +63,7 @@ class KaadoNavigationDrawer extends StatefulWidget {
 
 enum DrawerView { main, cards, review, settings }
 
-class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
+class _KaadoNavigationDrawerState extends ConsumerState<KaadoNavigationDrawer> {
   DrawerView _currentView = DrawerView.main;
   List<app_models.Category> _categories = [];
   bool _isLoading = false;
@@ -85,6 +86,7 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
     // Add additional check to prevent excessive calls
     if (_categories.isEmpty && !_isLoadingCategories && _lastLoadTime == null) {
       _loadCategories();
+    } else {
     }
     // Listen to theme changes
     ThemeService().addListener(_onThemeChanged);
@@ -107,6 +109,12 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    // Force load categories when drawer is built if we don't have any
+    if (_categories.isEmpty && !_isLoadingCategories) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadCategories();
+      });
+    }
     final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
@@ -651,7 +659,6 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
 
     try {
       final categories = await widget.databaseService.getCategoryTree();
-      
       
       setState(() {
         _categories = categories;

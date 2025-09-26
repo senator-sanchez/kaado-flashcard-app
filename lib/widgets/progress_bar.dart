@@ -30,7 +30,8 @@ class ProgressBar extends StatelessWidget {
     // final theme = Theme.of(context); // Unused variable
     final appTheme = context.appTheme;
     
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       padding: const EdgeInsets.all(AppSizes.paddingMedium),
       child: Column(
         children: [
@@ -91,6 +92,7 @@ class ProgressBar extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

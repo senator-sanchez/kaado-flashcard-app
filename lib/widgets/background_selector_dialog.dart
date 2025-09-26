@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/background_photo_service.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 
 /// Dialog for selecting background images from assets/backgrounds/
-class BackgroundSelectorDialog extends StatefulWidget {
+class BackgroundSelectorDialog extends ConsumerStatefulWidget {
   const BackgroundSelectorDialog({super.key});
 
   @override
-  State<BackgroundSelectorDialog> createState() => _BackgroundSelectorDialogState();
+  ConsumerState<BackgroundSelectorDialog> createState() => _BackgroundSelectorDialogState();
 }
 
-class _BackgroundSelectorDialogState extends State<BackgroundSelectorDialog> {
+class _BackgroundSelectorDialogState extends ConsumerState<BackgroundSelectorDialog> {
   final BackgroundPhotoService _backgroundPhotoService = BackgroundPhotoService.instance;
   String? _selectedBackground;
 

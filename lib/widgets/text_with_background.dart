@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 import '../services/background_photo_service.dart';
 
 /// A widget that wraps text with a solid background when background images are active
-class TextWithBackground extends StatefulWidget {
+class TextWithBackground extends ConsumerStatefulWidget {
   final String text;
   final TextStyle? style;
   final TextAlign? textAlign;
@@ -24,10 +25,10 @@ class TextWithBackground extends StatefulWidget {
   });
 
   @override
-  State<TextWithBackground> createState() => _TextWithBackgroundState();
+  ConsumerState<TextWithBackground> createState() => _TextWithBackgroundState();
 }
 
-class _TextWithBackgroundState extends State<TextWithBackground> {
+class _TextWithBackgroundState extends ConsumerState<TextWithBackground> {
   final BackgroundPhotoService _backgroundPhotoService =
       BackgroundPhotoService.instance;
 
@@ -56,12 +57,14 @@ class _TextWithBackgroundState extends State<TextWithBackground> {
 
     if (!hasBackgroundImage) {
       // No background image, return normal text
-      return Text(
+      return RepaintBoundary(
+        child: Text(
         widget.text,
         style: widget.style,
         textAlign: widget.textAlign,
         maxLines: widget.maxLines,
         overflow: widget.overflow,
+        ),
       );
     }
 
@@ -70,7 +73,8 @@ class _TextWithBackgroundState extends State<TextWithBackground> {
         ? appTheme.topTextBackgroundColor // Light grey for top text
         : appTheme.cardBackground; // Theme-aware background for swipe hints
 
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppConstants.textBackgroundPaddingHorizontal,
         vertical: AppConstants.textBackgroundPaddingVertical,
@@ -88,12 +92,13 @@ class _TextWithBackgroundState extends State<TextWithBackground> {
         maxLines: widget.maxLines,
         overflow: widget.overflow,
       ),
+      ),
     );
   }
 }
 
 /// A widget that wraps a child with a solid background when background images are active
-class WidgetWithBackground extends StatefulWidget {
+class WidgetWithBackground extends ConsumerStatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final BorderRadius? borderRadius;
@@ -106,10 +111,10 @@ class WidgetWithBackground extends StatefulWidget {
   });
 
   @override
-  State<WidgetWithBackground> createState() => _WidgetWithBackgroundState();
+  ConsumerState<WidgetWithBackground> createState() => _WidgetWithBackgroundState();
 }
 
-class _WidgetWithBackgroundState extends State<WidgetWithBackground> {
+class _WidgetWithBackgroundState extends ConsumerState<WidgetWithBackground> {
   final BackgroundPhotoService _backgroundPhotoService =
       BackgroundPhotoService.instance;
 

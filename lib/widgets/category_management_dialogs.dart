@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/category.dart' as app_models;
@@ -14,7 +15,7 @@ import '../constants/app_sizes.dart';
 // Project imports - Constants
 
 /// Dialog for adding a new category
-class AddCategoryDialog extends StatefulWidget {
+class AddCategoryDialog extends ConsumerStatefulWidget {
   final VoidCallback onCategoryAdded;
 
   const AddCategoryDialog({
@@ -23,10 +24,10 @@ class AddCategoryDialog extends StatefulWidget {
   });
 
   @override
-  State<AddCategoryDialog> createState() => _AddCategoryDialogState();
+  ConsumerState<AddCategoryDialog> createState() => _AddCategoryDialogState();
 }
 
-class _AddCategoryDialogState extends State<AddCategoryDialog> {
+class _AddCategoryDialogState extends ConsumerState<AddCategoryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -172,7 +173,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
 }
 
 /// Dialog for editing an existing category
-class EditCategoryDialog extends StatefulWidget {
+class EditCategoryDialog extends ConsumerStatefulWidget {
   final app_models.Category category;
   final VoidCallback onCategoryUpdated;
 
@@ -183,10 +184,10 @@ class EditCategoryDialog extends StatefulWidget {
   });
 
   @override
-  State<EditCategoryDialog> createState() => _EditCategoryDialogState();
+  ConsumerState<EditCategoryDialog> createState() => _EditCategoryDialogState();
 }
 
-class _EditCategoryDialogState extends State<EditCategoryDialog> {
+class _EditCategoryDialogState extends ConsumerState<EditCategoryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();

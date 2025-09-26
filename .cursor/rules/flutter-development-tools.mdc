@@ -1,0 +1,46 @@
+---
+alwaysApply: true
+description: Flutter development tools and best practices
+---
+
+# Flutter Development Tools & Best Practices
+
+## Code Generation
+- Utilize build_runner for generating code from annotations (Freezed, Riverpod, JSON serialization, AutoRoute)
+- Run `flutter pub run build_runner build --delete-conflicting-outputs` after modifying annotated classes
+- Use @riverpod annotation for generating providers
+- Use @freezed for immutable data classes
+- Use @JsonSerializable for model serialization
+
+## Development Tools
+- Use log instead of print for debugging
+- Use Flutter Hooks / Riverpod Hooks where appropriate
+- Use GetIt for dependency injection
+- Use AutoRoute for type-safe navigation
+
+## Documentation
+- Document complex logic and non-obvious code decisions
+- Follow official Flutter, Riverpod, and Supabase documentation for best practices
+- Maintain clear README files for modules
+- Document API contracts and interfaces
+
+## Additional Best Practices
+- Handle empty states within the displaying screen
+- Implement proper network error handling
+- Use Supabase for backend integration when applicable
+- Follow Material Design or Cupertino guidelines based on platform
+- Implement proper form validation
+- Use proper git commit messages and branching strategies
+
+## Performance Considerations
+- Use const constructors where possible
+- Implement proper list view optimizations
+- Avoid unnecessary rebuilds
+- Use proper image loading strategies
+- Implement proper state management patterns
+
+## Error Handling
+- Use AsyncValue for proper error handling and loading states
+- Implement proper error boundaries
+- Use proper exception handling patterns
+- Provide meaningful error messages to users

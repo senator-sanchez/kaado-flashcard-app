@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
@@ -9,7 +10,7 @@ import '../utils/app_theme.dart';
 /// This widget displays a circular FAB that expands to show menu items when tapped.
 /// The menu items appear above the FAB and include Shuffle and Reset buttons.
 /// All colors are theme-aware and adapt to the current app theme.
-class FabMenu extends StatefulWidget {
+class FabMenu extends ConsumerStatefulWidget {
   /// Callback function executed when the Shuffle button is pressed
   final VoidCallback? onShuffle;
   
@@ -27,11 +28,11 @@ class FabMenu extends StatefulWidget {
   });
 
   @override
-  State<FabMenu> createState() => FabMenuState();
+  ConsumerState<FabMenu> createState() => FabMenuState();
 }
 
 /// State class for the FabMenu widget
-class FabMenuState extends State<FabMenu> with TickerProviderStateMixin {
+class FabMenuState extends ConsumerState<FabMenu> with TickerProviderStateMixin {
   /// Tracks whether the menu is currently open or closed
   bool _isOpen = false;
   

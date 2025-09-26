@@ -90,6 +90,37 @@ class Flashcard {
 
   /// Get the underlying CardField list (if available)
   List<CardField>? get fields => _fields;
+  
+  /// Create a copy of this Flashcard with updated values
+  Flashcard copyWith({
+    int? id,
+    String? kana,
+    String? hiragana,
+    String? english,
+    String? romaji,
+    String? scriptType,
+    String? notes,
+    bool? isFavorite,
+    int? categoryId,
+    String? categoryName,
+    Card? card,
+    List<CardField>? fields,
+  }) {
+    return Flashcard(
+      id: id ?? this.id,
+      kana: kana ?? this.kana,
+      hiragana: hiragana ?? this.hiragana,
+      english: english ?? this.english,
+      romaji: romaji ?? this.romaji,
+      scriptType: scriptType ?? this.scriptType,
+      notes: notes ?? this.notes,
+      isFavorite: isFavorite ?? this.isFavorite,
+      categoryId: categoryId ?? this.categoryId,
+      categoryName: categoryName ?? this.categoryName,
+      card: card ?? this._card,
+      fields: fields ?? this._fields,
+    );
+  }
 
   /// Get the primary display text (kana)
   String get displayText => kana;

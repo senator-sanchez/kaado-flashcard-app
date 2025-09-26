@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/flashcard.dart';
@@ -26,7 +27,7 @@ import '../widgets/text_with_background.dart';
 import '../widgets/quick_edit_card_dialog.dart';
 
 /// Screen for reviewing incorrect cards from a specific deck
-class ReviewScreen extends StatefulWidget {
+class ReviewScreen extends ConsumerStatefulWidget {
   final int categoryId;
   final String categoryName;
   final DatabaseService databaseService;
@@ -39,10 +40,10 @@ class ReviewScreen extends StatefulWidget {
   });
 
   @override
-  State<ReviewScreen> createState() => _ReviewScreenState();
+  ConsumerState<ReviewScreen> createState() => _ReviewScreenState();
 }
 
-class _ReviewScreenState extends State<ReviewScreen> with TickerProviderStateMixin {
+class _ReviewScreenState extends ConsumerState<ReviewScreen> with TickerProviderStateMixin {
   // === Services ===
   final CardDisplayService _cardDisplayService = CardDisplayService.instance;
   

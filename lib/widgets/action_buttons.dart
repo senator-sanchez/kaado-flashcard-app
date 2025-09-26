@@ -15,7 +15,8 @@ class ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       padding: EdgeInsets.symmetric(
         vertical: 8, 
         horizontal: AppConstants.isWeb(context) ? 40 : 20,
@@ -41,6 +42,7 @@ class ActionButtons extends StatelessWidget {
         ),
         ],
       ),
+    ),
     );
   }
 }
@@ -62,7 +64,8 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final appTheme = context.appTheme;
     
-    return Column(
+    return RepaintBoundary(
+      child: Column(
       children: [
         Container(
           width: AppConstants.getButtonSize(context),
@@ -95,6 +98,7 @@ class _ActionButton extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    ),
     );
   }
 }

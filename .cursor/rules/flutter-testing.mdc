@@ -1,0 +1,46 @@
+---
+globs: *_test.dart,test/**/*.dart
+description: Flutter and Dart testing guidelines
+---
+
+# Flutter & Dart Testing Guidelines
+
+## General Testing Principles
+- Follow the Arrange-Act-Assert convention for tests
+- Name test variables clearly:
+  - Follow the convention: inputX, mockX, actualX, expectedX, etc.
+- Write unit tests for each public function
+  - Use test doubles to simulate dependencies
+  - Except for third-party dependencies that are not expensive to execute
+- Write acceptance tests for each module
+  - Follow the Given-When-Then convention
+
+## Flutter Testing
+- Use the standard widget testing for Flutter
+- Use integration tests for each API module
+- Test Riverpod providers and controllers
+- Mock external dependencies appropriately
+
+## Test Organization
+- Group related tests using `group()` function
+- Use descriptive test names that explain the expected behavior
+- Test both success and failure scenarios
+- Test edge cases and boundary conditions
+
+## Mocking and Test Doubles
+- Use mockito for creating mocks
+- Mock external dependencies (APIs, databases, file systems)
+- Use fake implementations for simple dependencies
+- Avoid mocking internal business logic
+
+## Widget Testing
+- Test widget rendering and user interactions
+- Test state changes and UI updates
+- Use `pumpWidget()` and `pumpAndSettle()` appropriately
+- Test accessibility features
+
+## Integration Testing
+- Test complete user flows
+- Test API integrations
+- Test database operations
+- Test navigation flows

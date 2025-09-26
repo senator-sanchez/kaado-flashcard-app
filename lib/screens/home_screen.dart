@@ -5,6 +5,7 @@ import 'dart:math' as math;
 // Flutter imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/flashcard.dart';
@@ -40,15 +41,16 @@ import '../widgets/fab_menu.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/navigation_drawer.dart';
 import '../widgets/quick_edit_card_dialog.dart';
+import '../widgets/custom_animated_drawer.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
   // === Services ===
   late DatabaseService _databaseService;
   final CardDisplayService _cardDisplayService = CardDisplayService.instance;
@@ -95,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _databaseService = DatabaseService();
+    _databaseService = ref.read(databaseServiceProvider);
     
     // Initialize animation controllers
     _swipeAnimationController = AnimationController(
@@ -112,9 +114,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Listen to background photo changes
     BackgroundPhotoService.instance.addListener(_onBackgroundPhotoChanged);
     
+    // Threading services are already initialized in main.dart
+    
     // Initialize app asynchronously to avoid blocking main thread
     _initializeAppAsync();
   }
+
 
   /// Initialize app components asynchronously to prevent main thread blocking
   Future<void> _initializeAppAsync() async {
@@ -125,8 +130,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Load settings first (lightweight operation)
       _cardDisplayService.getDisplaySettings();
       
-      // Clean up orphaned cards in background
-      _cleanupOrphanedCards();
+      // Clean up orphaned cards in background (lazy loading)
+      Future.delayed(Duration(milliseconds: 100), () {
+        _cleanupOrphanedCards();
+      });
       
       // Load initial cards in background
       await _loadInitialCards();
@@ -152,12 +159,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// Clean up orphaned cards that no longer exist in the main Card table
   Future<void> _cleanupOrphanedCards() async {
     try {
-      final deletedCount = await _databaseService.cleanupOrphanedCards();
-      if (deletedCount > 0) {
-        // Cleaned up $deletedCount orphaned cards from IncorrectCards table
-      }
+      await _databaseService.cleanupOrphanedCards();
     } catch (e) {
-      // Error cleaning up orphaned cards: $e
+      AppLogger.error('Error cleaning up orphaned cards: $e');
     }
   }
 
@@ -190,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// Load cards in background thread to prevent main thread blocking
   Future<Map<String, dynamic>?> _loadCardsInBackground() async {
     try {
-      // Find a category that has cards to load initially using database thread service
+      // Use regular database service for compatibility
       final categories = await _databaseService.getCategoryTree();
       
       if (categories.isNotEmpty) {
@@ -204,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         
         if (defaultCategory != null) {
+          // Use regular database service for card loading
           final cards = await _databaseService.getCardsByCategory(defaultCategory.id);
           return {'cards': cards};
         }
@@ -224,10 +229,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Check if this is the Favorites deck by getting the category name
       final category = await _databaseService.getCategoryById(categoryId);
       if (category != null && category.name.toLowerCase() == 'favorites') {
-        // Special case for Favorites - use getFavoriteCards
+        // Special case for Favorites - use regular database service
         cards = await _databaseService.getFavoriteCards();
       } else {
-        // Use getCardsByCategory for regular decks
+        // Use regular database service for regular decks
         cards = await _databaseService.getCardsByCategory(categoryId);
       }
       
@@ -240,7 +245,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _cardHistory.clear(); // Clear card history
         _isLoading = false;
         _currentCategoryId = categoryId;
-        // Note: Review prompt visibility is now determined by database query
         
         // Exit review mode when navigating to a different deck
         if (_isReviewMode) {
@@ -543,17 +547,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
-      drawer: KaadoNavigationDrawer(
-        databaseService: _databaseService,
-        onCategorySelected: _loadCardsForCategory,
-        onResetDatabase: () {
-          _loadInitialCards();
-        },
-        onThemeChanged: (themeMode) => _onThemeChangedFromDrawer(themeMode),
-        onCloseFab: _closeFabMenu,
-        onTriggerIncorrectCardsReview: _startIncorrectCardsReview,
-        onTriggerSpacedRepetitionReview: _startSpacedRepetitionReview,
-      ),
+      drawer: _buildCustomDrawer(),
       appBar: AppBar(
         backgroundColor: appTheme.appBarBackground,
         foregroundColor: appTheme.appBarIcon,
@@ -570,7 +564,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 icon: Icon(Icons.menu, color: appTheme.appBarIcon),
                 onPressed: () {
                   _closeFabMenu();
-                  Scaffold.of(context).openDrawer();
+                  _openCustomDrawer();
                 },
               ),
             ),
@@ -916,6 +910,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
+    );
+  }
+
+  /// Build custom drawer with slide-in animation from left to right
+  Widget _buildCustomDrawer() {
+    return CustomAnimatedDrawer(
+      child: KaadoNavigationDrawer(
+        databaseService: _databaseService,
+        onCategorySelected: _loadCardsForCategory,
+        onResetDatabase: () {
+          _loadInitialCards();
+        },
+        onThemeChanged: (themeMode) => _onThemeChangedFromDrawer(themeMode),
+        onCloseFab: _closeFabMenu,
+        onTriggerIncorrectCardsReview: _startIncorrectCardsReview,
+        onTriggerSpacedRepetitionReview: _startSpacedRepetitionReview,
+      ),
+    );
+  }
+
+  /// Open the custom animated drawer
+  void _openCustomDrawer() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.transparent,
+      builder: (context) => _buildCustomDrawer(),
     );
   }
 
@@ -1534,11 +1555,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       
       // Get or create user progress for this card
-      UserProgress? progress = await _databaseService.getUserProgress(currentCard.id);
-      if (progress == null) {
-        // Initialize progress for new card
-        progress = SRSAlgorithm.initializeProgress(currentCard.id);
-      }
+      UserProgress? progress = await _databaseService.getUserProgress(currentCard.id) 
+          ?? SRSAlgorithm.initializeProgress(currentCard.id);
       
       // Calculate new progress using SRS algorithm
       final updatedProgress = SRSAlgorithm.calculateNextReview(

@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/category.dart' as app_models;
@@ -26,7 +27,7 @@ import '../widgets/card_edit_dialog.dart';
 /// - Card editing, adding, and deleting functionality
 /// - Search and filtering capabilities
 /// - Clean card display with all fields visible
-class CategoryDetailScreen extends StatefulWidget {
+class CategoryDetailScreen extends ConsumerStatefulWidget {
   final app_models.Category category;
   final DatabaseService databaseService;
 
@@ -37,10 +38,10 @@ class CategoryDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
+  ConsumerState<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
 }
 
-class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
+class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
   List<Flashcard> _cards = [];
   bool _isLoading = true;
   String _searchQuery = '';

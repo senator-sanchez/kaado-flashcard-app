@@ -5,13 +5,16 @@ import 'package:flutter/material.dart';
 
 // Package imports
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports
 import 'constants/app_strings.dart';
 import 'firebase_options.dart';
 import 'screens/main_navigation_screen.dart';
-import 'services/background_photo_service.dart';
 import 'services/theme_service.dart';
+import 'services/optimized_database_service.dart';
+import 'services/isolate_service.dart';
+import 'services/performance_monitor_service.dart';
 
 /// Main entry point for the Kaado Japanese Language Learning App
 void main() async {
@@ -28,21 +31,46 @@ void main() async {
     // Continue without Firebase - the app should still work for local database
   }
   
-  // Initialize background photo service
-  await BackgroundPhotoService.instance.initialize();
+  // Initialize optimized services for better performance
+  await _initializeOptimizedServices();
   
-  // Initialize theme service to ensure theme is loaded before app starts
-  await ThemeService().initialize();
-  
-  runApp(const KaadoApp());
+  runApp(
+    const ProviderScope(
+      child: KaadoApp(),
+    ),
+  );
+}
+
+/// Initialize optimized services for better performance
+Future<void> _initializeOptimizedServices() async {
+  try {
+    
+    // Initialize theme service
+    await ThemeService().initialize();
+    
+    // Initialize performance monitoring
+    final performanceMonitor = PerformanceMonitorService();
+    performanceMonitor.startMonitoring();
+    
+    // Initialize isolate service for multithreading
+    await IsolateService().initialize();
+    
+    // Initialize optimized database service
+    final databaseService = OptimizedDatabaseService();
+    await databaseService.initialize();
+    
+  } catch (e) {
+    // Continue with fallback initialization
+    await ThemeService().initialize();
+  }
 }
 
 /// Root application widget
-class KaadoApp extends StatelessWidget {
+class KaadoApp extends ConsumerWidget {
   const KaadoApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListenableBuilder(
       listenable: ThemeService(),
       builder: (context, child) {

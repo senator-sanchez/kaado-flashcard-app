@@ -49,7 +49,6 @@ class BackgroundPhotoService extends ChangeNotifier {
       // Sort alphabetically for consistent ordering
       _defaultBackgrounds.sort();
       
-      AppLogger.info('Found ${_defaultBackgrounds.length} default backgrounds: $_defaultBackgrounds');
       notifyListeners();
     } catch (e) {
       AppLogger.error('Error loading default backgrounds', e);
@@ -92,17 +91,13 @@ class BackgroundPhotoService extends ChangeNotifier {
 
   /// Pick a background photo from gallery
   Future<bool> pickBackgroundPhoto() async {
-    AppLogger.info('pickBackgroundPhoto called');
     if (_isLoading) {
-      AppLogger.info('Background photo picker is already loading');
       return false;
     }
     
-    AppLogger.info('Starting background photo picker');
     _setLoading(true);
     
     try {
-      AppLogger.info('Opening image picker');
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1920,
@@ -111,17 +106,13 @@ class BackgroundPhotoService extends ChangeNotifier {
       );
 
       if (image != null) {
-        AppLogger.info('Image selected: ${image.path}');
         // Copy the image to app directory
         final String savedPath = await _saveImageToAppDirectory(image.path);
-        AppLogger.info('Image saved to: $savedPath');
         _backgroundPhotoPath = savedPath;
         await _saveBackgroundPhotoPath(savedPath);
         notifyListeners();
-        AppLogger.info('Background photo updated successfully');
         return true;
       } else {
-        AppLogger.info('No image selected');
       }
     } catch (e) {
       AppLogger.error('Error picking background photo', e);

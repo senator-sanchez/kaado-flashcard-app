@@ -1,0 +1,62 @@
+---
+alwaysApply: true
+description: Kaado app specific development guidelines
+---
+
+# Kaado App Development Guidelines
+
+## Project Structure
+- Main entry point: [lib/main.dart](mdc:lib/main.dart)
+- Database service: [lib/services/database_service.dart](mdc:lib/services/database_service.dart)
+- Home screen: [lib/screens/home_screen.dart](mdc:lib/screens/home_screen.dart)
+- Navigation drawer: [lib/widgets/navigation_drawer.dart](mdc:lib/widgets/navigation_drawer.dart)
+- Flashcard widget: [lib/widgets/flashcard_widget.dart](mdc:lib/widgets/flashcard_widget.dart)
+
+## Database Architecture
+- Use SQLite with asset-based database
+- Database file: `database/japanese.db`
+- Key tables: Deck, Card, CardField, UserProgress, DeckMembership, IncorrectCards
+- Use singleton pattern for DatabaseService
+- Implement proper error handling with AppLogger
+
+## State Management
+- Use StatefulWidget with setState for UI updates
+- Implement static caching for performance
+- Use global loading flags to prevent concurrent operations
+- Implement swipe operation flags to prevent UI freezing
+
+## Theme System
+- Use Material Design 3 with custom AppThemeExtension
+- Access theme properties via `context.appTheme`
+- Support light/dark mode switching
+- Use consistent color system throughout the app
+
+## Favorites System
+- Use DeckMembership table for many-to-many relationships
+- Favorites deck has special `sort_order = -9999`
+- Implement proper database refresh after favorite actions
+- Use `getFavoriteCards()` for loading favorites
+
+## Review System
+- Use IncorrectCards table for persistent tracking
+- Implement per-deck incorrect card collections
+- Use database-backed storage instead of memory
+- Implement proper review mode navigation
+
+## Performance Optimizations
+- Use static caching with timeout mechanisms
+- Implement debouncing for database calls
+- Use global loading flags to prevent concurrent operations
+- Use swipe operation flags during gestures
+
+## Error Handling
+- Use AppLogger for consistent error logging
+- Implement graceful error handling throughout
+- Use try-catch blocks for database operations
+- Provide user-friendly error messages
+
+## Code Organization
+- Keep related functionality in appropriate directories
+- Use descriptive file and class names
+- Maintain proper import organization
+- Follow existing code patterns and architecture

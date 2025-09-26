@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/flashcard.dart';
 import '../services/database_service.dart';
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
 
 /// Quick edit dialog for editing cards directly from the home screen
-class QuickEditCardDialog extends StatefulWidget {
+class QuickEditCardDialog extends ConsumerStatefulWidget {
   final Flashcard card;
   final VoidCallback onCardUpdated;
 
@@ -16,10 +17,10 @@ class QuickEditCardDialog extends StatefulWidget {
   });
 
   @override
-  State<QuickEditCardDialog> createState() => _QuickEditCardDialogState();
+  ConsumerState<QuickEditCardDialog> createState() => _QuickEditCardDialogState();
 }
 
-class _QuickEditCardDialogState extends State<QuickEditCardDialog> {
+class _QuickEditCardDialogState extends ConsumerState<QuickEditCardDialog> {
   final _formKey = GlobalKey<FormState>();
   final _kanaController = TextEditingController();
   final _hiraganaController = TextEditingController();

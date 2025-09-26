@@ -1,5 +1,6 @@
 // Flutter imports
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Project imports - Models
 import '../models/spaced_repetition_settings.dart';
@@ -8,7 +9,7 @@ import '../models/spaced_repetition_settings.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 
-class SpacedRepetitionSettingsScreen extends StatefulWidget {
+class SpacedRepetitionSettingsScreen extends ConsumerStatefulWidget {
   final SpacedRepetitionSettings? initialSettings;
   final Function(SpacedRepetitionSettings)? onSettingsChanged;
 
@@ -19,10 +20,10 @@ class SpacedRepetitionSettingsScreen extends StatefulWidget {
   });
 
   @override
-  State<SpacedRepetitionSettingsScreen> createState() => _SpacedRepetitionSettingsScreenState();
+  ConsumerState<SpacedRepetitionSettingsScreen> createState() => _SpacedRepetitionSettingsScreenState();
 }
 
-class _SpacedRepetitionSettingsScreenState extends State<SpacedRepetitionSettingsScreen> {
+class _SpacedRepetitionSettingsScreenState extends ConsumerState<SpacedRepetitionSettingsScreen> {
   late SpacedRepetitionSettings _settings;
   bool _hasChanges = false;
 

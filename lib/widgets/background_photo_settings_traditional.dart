@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/background_photo_service.dart';
 import '../services/theme_service.dart';
 import '../services/app_logger.dart';
@@ -6,16 +7,16 @@ import '../utils/app_theme.dart';
 import 'background_selector_dialog.dart';
 
 /// Widget for managing background photo settings (Traditional State Management)
-class BackgroundPhotoSettingsTraditional extends StatefulWidget {
+class BackgroundPhotoSettingsTraditional extends ConsumerStatefulWidget {
   const BackgroundPhotoSettingsTraditional({super.key});
 
   @override
-  State<BackgroundPhotoSettingsTraditional> createState() =>
+  ConsumerState<BackgroundPhotoSettingsTraditional> createState() =>
       _BackgroundPhotoSettingsTraditionalState();
 }
 
 class _BackgroundPhotoSettingsTraditionalState
-    extends State<BackgroundPhotoSettingsTraditional> {
+    extends ConsumerState<BackgroundPhotoSettingsTraditional> {
   final BackgroundPhotoService _backgroundPhotoService =
       BackgroundPhotoService.instance;
   final ThemeService _themeService = ThemeService();
@@ -261,7 +262,6 @@ class _BackgroundPhotoSettingsTraditionalState
 
   Future<void> _pickFromGallery() async {
     try {
-      AppLogger.info('Starting _pickFromGallery');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Starting image picker...'),
@@ -270,7 +270,6 @@ class _BackgroundPhotoSettingsTraditionalState
       );
       
       final success = await _backgroundPhotoService.pickBackgroundPhoto();
-      AppLogger.info('pickBackgroundPhoto returned: $success');
 
       if (success && mounted) {
         // Background photo updated from gallery

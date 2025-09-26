@@ -1,0 +1,55 @@
+---
+globs: *.dart
+description: Flutter performance optimization guidelines
+---
+
+# Flutter Performance Optimization
+
+## Widget Performance
+- Use const constructors for immutable widgets
+- Avoid unnecessary rebuilds by using const widgets
+- Use RepaintBoundary for expensive widgets
+- Implement proper widget disposal in dispose() methods
+- Use AutomaticKeepAliveClientMixin when needed
+
+## List Performance
+- Use ListView.builder for large lists
+- Implement proper itemExtent for fixed-height items
+- Use Sliver widgets for complex scrolling scenarios
+- Implement proper lazy loading for large datasets
+
+## Image Performance
+- Use AssetImage for static images
+- Use cached_network_image for remote images
+- Implement proper image sizing and compression
+- Use appropriate image formats (WebP, PNG, JPEG)
+
+## State Management Performance
+- Use Riverpod providers efficiently
+- Implement proper provider invalidation
+- Use keepAlive for expensive providers
+- Avoid unnecessary provider rebuilds
+
+## Database Performance
+- Use proper indexing for database queries
+- Implement connection pooling
+- Use background isolates for heavy operations
+- Implement proper caching strategies
+
+## Memory Management
+- Dispose of controllers and streams properly
+- Use weak references where appropriate
+- Implement proper cleanup in dispose() methods
+- Monitor memory usage with Flutter DevTools
+
+## Build Performance
+- Use const constructors where possible
+- Implement proper widget composition
+- Avoid deep widget trees
+- Use proper key management for list items
+
+## Animation Performance
+- Use AnimatedWidget for simple animations
+- Implement proper animation controllers
+- Use Transform widgets for efficient transformations
+- Avoid expensive operations during animations

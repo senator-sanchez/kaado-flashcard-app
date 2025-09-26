@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/background_photo_service.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
 
 /// Widget that provides background for the app
 /// Can display either a solid color or a background photo
-class BackgroundWidget extends StatefulWidget {
+class BackgroundWidget extends ConsumerStatefulWidget {
   final Widget child;
   final bool showBackgroundPhoto;
 
@@ -16,10 +17,10 @@ class BackgroundWidget extends StatefulWidget {
   });
 
   @override
-  State<BackgroundWidget> createState() => _BackgroundWidgetState();
+  ConsumerState<BackgroundWidget> createState() => _BackgroundWidgetState();
 }
 
-class _BackgroundWidgetState extends State<BackgroundWidget> {
+class _BackgroundWidgetState extends ConsumerState<BackgroundWidget> {
   final BackgroundPhotoService _backgroundPhotoService = BackgroundPhotoService.instance;
 
   @override
@@ -75,7 +76,7 @@ class _BackgroundWidgetState extends State<BackgroundWidget> {
 }
 
 /// Alternative implementation using File image for local photos (Traditional State Management)
-class BackgroundWidgetWithFile extends StatefulWidget {
+class BackgroundWidgetWithFile extends ConsumerStatefulWidget {
   final Widget child;
   final bool showBackgroundPhoto;
 
@@ -86,10 +87,10 @@ class BackgroundWidgetWithFile extends StatefulWidget {
   });
 
   @override
-  State<BackgroundWidgetWithFile> createState() => _BackgroundWidgetWithFileState();
+  ConsumerState<BackgroundWidgetWithFile> createState() => _BackgroundWidgetWithFileState();
 }
 
-class _BackgroundWidgetWithFileState extends State<BackgroundWidgetWithFile> {
+class _BackgroundWidgetWithFileState extends ConsumerState<BackgroundWidgetWithFile> {
   final BackgroundPhotoService _backgroundPhotoService = BackgroundPhotoService.instance;
 
   @override

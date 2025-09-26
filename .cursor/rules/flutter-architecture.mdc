@@ -1,0 +1,41 @@
+---
+alwaysApply: true
+description: Flutter architecture and clean code principles
+---
+
+# Flutter Architecture & Clean Code Principles
+
+## Architecture Principles
+- Use clean architecture with clear separation of concerns:
+  - **Presentation Layer**: Widgets, Controllers (Riverpod)
+  - **Domain Layer**: Use Cases, Entities, Repository Interfaces  
+  - **Data Layer**: Repository Implementations, Data Sources, Models
+- Organize code into modules when needed
+- Use repository pattern for data persistence with caching support
+- Use controller pattern for business logic with Riverpod
+
+## Dependency Management
+- Use GetIt for dependency injection of services and repositories
+  - Use singleton for services and repositories
+  - Use factory for use cases
+  - Use lazy singleton for controllers
+- Use Riverpod for state management and UI-related providers
+  - Use @riverpod annotation for generating providers
+  - Prefer AsyncNotifierProvider and NotifierProvider over StateProvider
+  - Avoid StateProvider, StateNotifierProvider, and ChangeNotifierProvider
+  - Use ref.invalidate() for manually triggering provider updates
+
+## Code Organization
+- Structure files: exported widget, subwidgets, helpers, static content, types
+- Use extensions to manage reusable code
+- Use constants to manage constant values
+- Avoid magic numbers and define constants
+- Keep lines no longer than 80 characters
+- Add commas before closing brackets for multi-parameter functions
+
+## Performance Optimization
+- Use const widgets where possible to optimize rebuilds
+- Implement list view optimizations (e.g., ListView.builder)
+- Use AssetImage for static images and cached_network_image for remote images
+- Avoid deeply nested widgets to reduce build complexity
+- Use trailing commas for better formatting and diffs

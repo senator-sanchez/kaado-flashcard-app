@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
-// import '../constants/app_strings.dart'; // Unused import removed
 import '../services/card_display_service.dart';
 import '../models/card_display_settings.dart';
 
@@ -9,14 +9,14 @@ import '../models/card_display_settings.dart';
 /// 
 /// Allows users to customize what fields appear on the front and back of cards.
 /// This is critical for language learning flexibility and different study modes.
-class CardDisplaySettingsScreen extends StatefulWidget {
+class CardDisplaySettingsScreen extends ConsumerStatefulWidget {
   const CardDisplaySettingsScreen({super.key});
 
   @override
-  State<CardDisplaySettingsScreen> createState() => _CardDisplaySettingsScreenState();
+  ConsumerState<CardDisplaySettingsScreen> createState() => _CardDisplaySettingsScreenState();
 }
 
-class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
+class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsScreen> {
   late CardDisplaySettings _settings;
   bool _isLoading = false;
 
@@ -71,7 +71,6 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final appTheme = context.appTheme;
 
     return Scaffold(
@@ -83,18 +82,21 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
         title: Text(
           'Card Display Settings',
           style: TextStyle(
-            color: appTheme.primaryText,
+            color: appTheme.appBarIcon,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           if (_isLoading)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16.0),
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: appTheme.primaryIcon,
+                ),
               ),
             )
           else
@@ -103,7 +105,7 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
               child: Text(
                 'Save',
                 style: TextStyle(
-                  color: theme.primaryColor,
+                  color: appTheme.primaryBlue,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -111,7 +113,11 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                color: appTheme.primaryIcon,
+              ),
+            )
           : SingleChildScrollView(
               padding: EdgeInsets.all(AppSizes.paddingMedium),
               child: Column(
@@ -132,12 +138,6 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
                   _buildSectionHeader('Study Modes', appTheme),
                   SizedBox(height: AppSizes.spacingMedium),
                   _buildStudyModeSettings(appTheme),
-                  
-                  SizedBox(height: AppSizes.spacingLarge),
-                  
-                  _buildSectionHeader('Field Visibility', appTheme),
-                  SizedBox(height: AppSizes.spacingMedium),
-                  _buildFieldVisibilitySettings(appTheme),
                 ],
               ),
             ),
@@ -162,32 +162,44 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
         padding: EdgeInsets.all(AppSizes.paddingMedium),
         child: Column(
           children: [
-            _buildFieldOption(
-              'Kana (Hiragana/Katakana)',
+            _buildRadioOption(
+              'Kana',
               'Show Japanese kana characters',
-              _settings.showKana,
-              (value) => setState(() => _settings = _settings.copyWith(showKana: value)),
+              FrontCardOption.kana,
+              _settings.frontCardOption,
+              (value) => setState(() => _settings = _settings.copyWith(frontCardOption: value)),
               appTheme,
             ),
-            _buildFieldOption(
-              'Hiragana Only',
+            _buildRadioOption(
+              'Hiragana',
               'Show only hiragana characters',
-              _settings.showHiragana,
-              (value) => setState(() => _settings = _settings.copyWith(showHiragana: value)),
+              FrontCardOption.hiragana,
+              _settings.frontCardOption,
+              (value) => setState(() => _settings = _settings.copyWith(frontCardOption: value)),
               appTheme,
             ),
-            _buildFieldOption(
+            _buildRadioOption(
               'Kanji',
               'Show kanji characters',
-              _settings.showKanji,
-              (value) => setState(() => _settings = _settings.copyWith(showKanji: value)),
+              FrontCardOption.kanji,
+              _settings.frontCardOption,
+              (value) => setState(() => _settings = _settings.copyWith(frontCardOption: value)),
               appTheme,
             ),
-            _buildFieldOption(
+            _buildRadioOption(
               'Romaji',
               'Show romanized text',
-              _settings.showRomaji,
-              (value) => setState(() => _settings = _settings.copyWith(showRomaji: value)),
+              FrontCardOption.romaji,
+              _settings.frontCardOption,
+              (value) => setState(() => _settings = _settings.copyWith(frontCardOption: value)),
+              appTheme,
+            ),
+            _buildRadioOption(
+              'English',
+              'Show English translation',
+              FrontCardOption.english,
+              _settings.frontCardOption,
+              (value) => setState(() => _settings = _settings.copyWith(frontCardOption: value)),
               appTheme,
             ),
           ],
@@ -197,41 +209,58 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
   }
 
   Widget _buildBackCardSettings(AppThemeExtension appTheme) {
+    // Always show all back options in consistent order
+    final allBackOptions = BackCardOption.values;
+
     return Card(
       color: appTheme.cardBackground,
       child: Padding(
         padding: EdgeInsets.all(AppSizes.paddingMedium),
         child: Column(
-          children: [
-            _buildFieldOption(
-              'English Translation',
-              'Show English translations',
-              _settings.showEnglish,
-              (value) => setState(() => _settings = _settings.copyWith(showEnglish: value)),
+          children: allBackOptions.map((option) {
+            String title;
+            String subtitle;
+            
+            switch (option) {
+              case BackCardOption.kana:
+                title = 'Kana';
+                subtitle = 'Show Japanese kana characters';
+                break;
+              case BackCardOption.hiragana:
+                title = 'Hiragana';
+                subtitle = 'Show only hiragana characters';
+                break;
+              case BackCardOption.kanji:
+                title = 'Kanji';
+                subtitle = 'Show kanji characters';
+                break;
+              case BackCardOption.romaji:
+                title = 'Romaji';
+                subtitle = 'Show romanized text';
+                break;
+              case BackCardOption.english:
+                title = 'English';
+                subtitle = 'Show English translation';
+                break;
+            }
+
+            return _buildCheckboxOption(
+              title,
+              subtitle,
+              option,
+              _settings.backCardOptions.contains(option),
+              (isChecked) {
+                final newBackOptions = Set<BackCardOption>.from(_settings.backCardOptions);
+                if (isChecked) {
+                  newBackOptions.add(option);
+                } else {
+                  newBackOptions.remove(option);
+                }
+                setState(() => _settings = _settings.copyWith(backCardOptions: newBackOptions));
+              },
               appTheme,
-            ),
-            _buildFieldOption(
-              'Notes',
-              'Show user notes',
-              _settings.showNotes,
-              (value) => setState(() => _settings = _settings.copyWith(showNotes: value)),
-              appTheme,
-            ),
-            _buildFieldOption(
-              'Pronunciation',
-              'Show pronunciation guides',
-              _settings.showPronunciation,
-              (value) => setState(() => _settings = _settings.copyWith(showPronunciation: value)),
-              appTheme,
-            ),
-            _buildFieldOption(
-              'Context',
-              'Show example sentences',
-              _settings.showContext,
-              (value) => setState(() => _settings = _settings.copyWith(showContext: value)),
-              appTheme,
-            ),
-          ],
+            );
+          }).toList(),
         ),
       ),
     );
@@ -274,77 +303,16 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
     );
   }
 
-  Widget _buildFieldVisibilitySettings(AppThemeExtension appTheme) {
-    return Card(
-      color: appTheme.cardBackground,
-      child: Padding(
-        padding: EdgeInsets.all(AppSizes.paddingMedium),
-        child: Column(
-          children: [
-            _buildFieldOption(
-              'Show Field Labels',
-              'Display field names (e.g., "Kana:", "English:")',
-              _settings.showFieldLabels,
-              (value) => setState(() => _settings = _settings.copyWith(showFieldLabels: value)),
-              appTheme,
-            ),
-            _buildFieldOption(
-              'Compact Mode',
-              'Use smaller text and spacing',
-              _settings.compactMode,
-              (value) => setState(() => _settings = _settings.copyWith(compactMode: value)),
-              appTheme,
-            ),
-            _buildFieldOption(
-              'Highlight Differences',
-              'Highlight differences between similar cards',
-              _settings.highlightDifferences,
-              (value) => setState(() => _settings = _settings.copyWith(highlightDifferences: value)),
-              appTheme,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildFieldOption(
+  Widget _buildRadioOption<T>(
     String title,
     String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
+    T value,
+    T groupValue,
+    ValueChanged<T> onChanged,
     AppThemeExtension appTheme,
   ) {
-    return SwitchListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          color: appTheme.primaryText,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          color: appTheme.secondaryText,
-          fontSize: 12,
-        ),
-      ),
-      value: value,
-      onChanged: onChanged,
-      activeColor: Theme.of(context).primaryColor,
-    );
-  }
-
-  Widget _buildRadioOption(
-    String title,
-    String subtitle,
-    CardDisplayMode value,
-    CardDisplayMode groupValue,
-    ValueChanged<CardDisplayMode> onChanged,
-    AppThemeExtension appTheme,
-  ) {
-    return RadioListTile<CardDisplayMode>(
+    return RadioListTile<T>(
       title: Text(
         title,
         style: TextStyle(
@@ -362,7 +330,37 @@ class _CardDisplaySettingsScreenState extends State<CardDisplaySettingsScreen> {
       value: value,
       groupValue: groupValue,
       onChanged: (value) => onChanged(value!),
-      activeColor: Theme.of(context).primaryColor,
+      activeColor: appTheme.primaryBlue,
+    );
+  }
+
+  Widget _buildCheckboxOption<T>(
+    String title,
+    String subtitle,
+    T value,
+    bool isChecked,
+    ValueChanged<bool> onChanged,
+    AppThemeExtension appTheme,
+  ) {
+    return CheckboxListTile(
+      title: Text(
+        title,
+        style: TextStyle(
+          color: appTheme.primaryText,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          color: appTheme.secondaryText,
+          fontSize: 12,
+        ),
+      ),
+      value: isChecked,
+      onChanged: (checked) => onChanged(checked!),
+      activeColor: appTheme.primaryBlue,
+      controlAffinity: ListTileControlAffinity.leading,
     );
   }
 }

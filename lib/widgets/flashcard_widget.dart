@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/flashcard.dart';
 import '../utils/app_theme.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_constants.dart';
 
 /// Flashcard widget for displaying individual flashcards
-class FlashcardWidget extends StatefulWidget {
+class FlashcardWidget extends ConsumerStatefulWidget {
   final Flashcard flashcard;
   final bool showAnswer;
   final bool isCompleted;
@@ -24,10 +25,10 @@ class FlashcardWidget extends StatefulWidget {
   });
 
   @override
-  State<FlashcardWidget> createState() => _FlashcardWidgetState();
+  ConsumerState<FlashcardWidget> createState() => _FlashcardWidgetState();
 }
 
-class _FlashcardWidgetState extends State<FlashcardWidget> {
+class _FlashcardWidgetState extends ConsumerState<FlashcardWidget> {
   bool _showNotes = false;
 
   @override
@@ -35,145 +36,91 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
     final theme = Theme.of(context);
     final appTheme = context.appTheme;
     
-    return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
-      onTap: () {
-        if (_showNotes) {
-          setState(() {
-            _showNotes = false;
-          });
-        } else {
-          widget.onTap();
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        constraints: BoxConstraints(
-          minHeight: MediaQuery.of(context).size.height * 0.3,
-          maxHeight: MediaQuery.of(context).size.height * 0.3,
-        ),
-        decoration: BoxDecoration(
-          color: appTheme.cardBackground,
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-          boxShadow: [
-            BoxShadow(
-              color: appTheme.shadowColor,
-              blurRadius: AppSizes.shadowBlurMedium,
-              offset: const Offset(0, AppSizes.shadowOffsetSmall),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppConstants.cardPadding),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (widget.isCompleted) ...[
-                      // Completion message
-                      Icon(
-                        Icons.celebration,
-                        size: AppConstants.cardCompletionIconSize,
-                        color: Colors.amber,
-                      ),
-                      SizedBox(height: AppConstants.cardCompletionSpacing),
-                      Text(
-                        'Deck Completed!',
-                        style: TextStyle(
-                          fontSize: AppConstants.cardCompletionTitleSize,
-                          color: appTheme.primaryText,
-                          fontWeight: FontWeight.bold,
+    return RepaintBoundary(
+      key: ValueKey('flashcard_${widget.flashcard.id}'),
+      child: GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onTap: () {
+          if (_showNotes) {
+            setState(() {
+              _showNotes = false;
+            });
+          } else {
+            widget.onTap();
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height * 0.3,
+            maxHeight: MediaQuery.of(context).size.height * 0.3,
+          ),
+          decoration: BoxDecoration(
+            color: appTheme.cardBackground,
+            borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+            boxShadow: [
+              BoxShadow(
+                color: appTheme.shadowColor,
+                blurRadius: AppSizes.shadowBlurMedium,
+                offset: const Offset(0, AppSizes.shadowOffsetSmall),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppConstants.cardPadding),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (widget.isCompleted) ...[
+                        // Completion message
+                        Icon(
+                          Icons.celebration,
+                          size: AppConstants.cardCompletionIconSize,
+                          color: Colors.amber,
                         ),
-                      ),
-                      SizedBox(height: AppConstants.cardCompletionSpacing),
-                      Text(
-                        'Great job! You\'ve finished all the cards.',
-                        style: TextStyle(
-                          fontSize: AppConstants.cardCompletionSubtitleSize,
-                          color: appTheme.secondaryText,
-                          fontStyle: FontStyle.italic,
+                        SizedBox(height: AppConstants.cardCompletionSpacing),
+                        Text(
+                          'Deck Completed!',
+                          style: TextStyle(
+                            fontSize: AppConstants.cardCompletionTitleSize,
+                            color: appTheme.primaryText,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ] else if (_showNotes && widget.flashcard.notes != null && widget.flashcard.notes!.isNotEmpty) ...[
-                      // Show only notes content
-                      _buildNotesContent(theme, appTheme),
-                    ] else ...[
-                      // Main card content
-                      _buildCardContent(theme, appTheme),
+                        SizedBox(height: AppConstants.cardCompletionSpacing),
+                        Text(
+                          'Great job! You\'ve finished all the cards.',
+                          style: TextStyle(
+                            fontSize: AppConstants.cardCompletionSubtitleSize,
+                            color: appTheme.secondaryText,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ] else if (_showNotes && widget.flashcard.notes != null && widget.flashcard.notes!.isNotEmpty) ...[
+                        // Show only notes content
+                        _buildNotesContent(theme, appTheme),
+                      ] else ...[
+                        // Main card content
+                        _buildCardContent(theme, appTheme),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-            ),
-            
-            // Edit icon (only show when card is flipped)
-            if (widget.showAnswer)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: GestureDetector(
-                  onTap: () {
-                    widget.onEdit?.call();
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: appTheme.surface.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.edit,
-                      color: appTheme.primaryIcon.withValues(alpha: 0.8),
-                      size: 20,
-                    ),
                   ),
                 ),
               ),
-            
-            // Notes icon (only show if card has notes and not currently showing notes)
-            if (widget.showAnswer && 
-                widget.flashcard.notes != null && 
-                widget.flashcard.notes!.isNotEmpty && 
-                !_showNotes)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showNotes = true;
-                    });
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: appTheme.surface.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.note,
-                      color: appTheme.primaryIcon.withValues(alpha: 0.8),
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            
-            // Star icon (favorites) - only show when card is flipped (back side)
-            if (widget.showAnswer && widget.onToggleFavorite != null)
-              Positioned(
-                top: 8,
-                left: 0,
-                right: 0,
-                child: Center(
+              
+              // Edit icon (only show when card is flipped)
+              if (widget.showAnswer)
+                Positioned(
+                  top: 8,
+                  left: 8,
                   child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
                     onTap: () {
-                      widget.onToggleFavorite?.call();
+                      widget.onEdit?.call();
                     },
                     child: Container(
                       padding: EdgeInsets.all(8),
@@ -182,17 +129,74 @@ class _FlashcardWidgetState extends State<FlashcardWidget> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Icon(
-                        widget.flashcard.isFavorite ? Icons.star : Icons.star_border,
-                        color: widget.flashcard.isFavorite 
-                            ? Colors.amber 
-                            : appTheme.primaryIcon.withValues(alpha: 0.8),
+                        Icons.edit,
+                        color: appTheme.primaryIcon.withValues(alpha: 0.8),
                         size: 20,
                       ),
                     ),
                   ),
+              ),
+              
+              // Notes icon (only show if card has notes and not currently showing notes)
+              if (widget.showAnswer && 
+                  widget.flashcard.notes != null && 
+                  widget.flashcard.notes!.isNotEmpty && 
+                  !_showNotes)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _showNotes = true;
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: appTheme.surface.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(
+                        Icons.note,
+                        color: appTheme.primaryIcon.withValues(alpha: 0.8),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+              ),
+              
+              // Star icon (favorites) - only show when card is flipped (back side)
+              if (widget.showAnswer && widget.onToggleFavorite != null)
+                Positioned(
+                  top: 8,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        widget.onToggleFavorite?.call();
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: appTheme.surface.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(
+                          widget.flashcard.isFavorite ? Icons.star : Icons.star_border,
+                          color: widget.flashcard.isFavorite 
+                              ? Colors.amber 
+                              : appTheme.primaryIcon.withValues(alpha: 0.8),
+                          size: 20,
+                        ),
+                      ),
+                    ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
