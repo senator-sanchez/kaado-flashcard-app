@@ -468,11 +468,71 @@ Tags:
 - [ ] Tags confirmed on GitHub
 
 ### **Version History**
+- **v12.2** (2025-01-25): GitHub workflow documentation and version management
 - **v12.1** (2025-01-25): Complete code cleanup and knowledge base documentation
 - **v12.0**: Previous stable version
 - **v11.3**: Previous version
 - **v11.2**: Previous version
 - **v11.1**: Previous version
+
+## **Firebase Deployment Process**
+
+### **Firebase App Distribution Setup**
+- **Project ID**: kaado-b7fdb
+- **App ID**: 1:134812932196:android:e108d67afbc61f545d2771
+- **Test Group**: Test
+- **Firebase Console**: [Project Console](https://console.firebase.google.com/project/kaado-b7fdb)
+
+### **Deployment Workflow**
+The complete process for deploying to Firebase App Distribution:
+
+#### **1. Build Release APK**
+```bash
+# Build the Flutter app in release mode
+flutter build apk --release
+```
+**Output**: `build/app/outputs/flutter-apk/app-release.apk` (typically 50MB)
+
+#### **2. Deploy to Firebase App Distribution**
+```bash
+# Distribute APK to test group
+firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk \
+  --app 1:134812932196:android:e108d67afbc61f545d2771 \
+  --groups Test
+```
+
+#### **3. Deployment Results**
+- **Release Version**: Auto-incremented (e.g., 11.0.0 (12))
+- **Status**: Successfully distributed to testers
+- **Download Link**: Provided with 1-hour expiration
+- **Firebase Console**: Direct link to view release details
+
+### **Firebase Configuration**
+- **Project**: kaado-b7fdb
+- **App Distribution**: Enabled for Android
+- **Test Groups**: Test (primary testing group)
+- **Release Notes**: Optional (can be added with `--release-notes` flag)
+
+### **Build Optimization**
+- **Font Tree-shaking**: MaterialIcons reduced by 99.7% (1.6MB → 5.4KB)
+- **Build Time**: ~110 seconds for release APK
+- **APK Size**: ~50MB (optimized)
+
+### **Deployment Checklist**
+- [ ] Code changes committed and tested
+- [ ] Version incremented appropriately
+- [ ] Flutter dependencies resolved
+- [ ] Release APK built successfully
+- [ ] Firebase CLI authenticated
+- [ ] APK distributed to test group
+- [ ] Download links shared with testers
+- [ ] Firebase console updated with new release
+
+### **Troubleshooting**
+- **Missing APK**: Run `flutter build apk --release` first
+- **Authentication**: Ensure `firebase login` is completed
+- **Project Access**: Verify Firebase project permissions
+- **Test Group**: Confirm test group exists in Firebase console
 
 ## **Future Architecture Considerations**
 

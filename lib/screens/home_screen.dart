@@ -119,6 +119,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// Initialize app components asynchronously to prevent main thread blocking
   Future<void> _initializeAppAsync() async {
     try {
+      // Ensure database is fully initialized first
+      await _databaseService.ensureDatabaseInitialized();
+      
       // Load settings first (lightweight operation)
       _cardDisplayService.getDisplaySettings();
       
@@ -305,24 +308,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
     
-    // Track incorrect cards for review system (legacy system)
+    // Track incorrect cards for review system
     if (!isCorrect && currentCard.id > 0) {
       try {
-        await _databaseService.markCardIncorrect(
-          currentCard.id,
-          currentCard.categoryId,
-          currentCard.categoryName ?? 'Unknown Category',
-        );
+        if (_isInFavoritesDeck()) {
+          // For Favorites deck, mark as incorrect in the original deck
+          await _databaseService.markCardIncorrectInDatabase(currentCard.id, currentCard.categoryId);
+        } else {
+          // For regular decks, use the normal logic
+          await _databaseService.markCardIncorrect(
+            currentCard.id,
+            currentCard.categoryId,
+            currentCard.categoryName ?? 'Unknown Category',
+          );
+        }
       } catch (e) {
         // Handle error silently - don't interrupt the user experience
       }
     } else if (isCorrect && currentCard.id > 0) {
       try {
-        // Remove from incorrect cards if it was previously marked incorrect
-        await _databaseService.markCardCorrect(
-          currentCard.id,
-          currentCard.categoryId,
-        );
+        if (_isInFavoritesDeck()) {
+          // For Favorites deck, mark as correct in the original deck
+          await _databaseService.markCardCorrectInDatabase(currentCard.id);
+        } else {
+          // For regular decks, use the normal logic
+          await _databaseService.markCardCorrect(
+            currentCard.id,
+            currentCard.categoryId,
+          );
+        }
       } catch (e) {
         // Handle error silently
       }
@@ -530,7 +544,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: appTheme.backgroundColor,
       drawer: KaadoNavigationDrawer(
-        key: const ValueKey('navigation_drawer'), // Stable key to prevent recreation
         databaseService: _databaseService,
         onCategorySelected: _loadCardsForCategory,
         onResetDatabase: () {
@@ -980,9 +993,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// Get count of incorrect cards for current deck from database
   Future<int> _getIncorrectCardsCountFromDatabase() async {
     try {
-      final incorrectCards = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
-      return incorrectCards.length;
+      // For Favorites deck, we need to get incorrect cards from the original decks
+      if (_isInFavoritesDeck()) {
+        // Get all favorite cards and check which ones are marked incorrect in their original decks
+        final favoriteCards = await _databaseService.getFavoriteCards();
+        int incorrectCount = 0;
+        for (final card in favoriteCards) {
+          // Check if this card is marked incorrect in its original deck
+          final originalDeckId = card.categoryId;
+          if (originalDeckId > 0) {
+            final incorrectCards = await _databaseService.getIncorrectCardsFromDatabase(originalDeckId);
+            if (incorrectCards.contains(card.id)) {
+              incorrectCount++;
+            }
+          }
+        }
+        return incorrectCount;
+      } else {
+        // For regular decks, use the normal logic
+        final incorrectCards = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
+        return incorrectCards.length;
+      }
     } catch (e) {
+      AppLogger.error('Error getting incorrect cards count: $e');
       return 0;
     }
   }
@@ -1025,24 +1058,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     
     try {
-      // Get incorrect card IDs from database
-      final incorrectCardIds = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
+      List<Flashcard> incorrectCards = [];
       
-      if (incorrectCardIds.isNotEmpty) {
-        // Load the actual card objects for the incorrect card IDs
-        final allCards = await _databaseService.getCardsByCategory(_currentCategoryId);
-        final incorrectCards = allCards.where((card) => incorrectCardIds.contains(card.id)).toList();
-        
-        if (incorrectCards.isNotEmpty) {
-          setState(() {
-            _isReviewMode = true;
-            _currentCards = incorrectCards;
-            _currentCardIndex = 0;
-            _showAnswer = false;
-            _reviewCorrectAnswers = 0;
-            _reviewTotalAttempts = 0;
-          });
+      if (_isInFavoritesDeck()) {
+        // For Favorites deck, get cards that are marked incorrect in their original decks
+        final favoriteCards = await _databaseService.getFavoriteCards();
+        for (final card in favoriteCards) {
+          final originalDeckId = card.categoryId;
+          if (originalDeckId > 0) {
+            final incorrectCardIds = await _databaseService.getIncorrectCardsFromDatabase(originalDeckId);
+            if (incorrectCardIds.contains(card.id)) {
+              incorrectCards.add(card);
+            }
+          }
         }
+      } else {
+        // For regular decks, use the normal logic
+        final incorrectCardIds = await _databaseService.getIncorrectCardsFromDatabase(_currentCategoryId);
+        
+        if (incorrectCardIds.isNotEmpty) {
+          // Load the actual card objects for the incorrect card IDs
+          final allCards = await _databaseService.getCardsByCategory(_currentCategoryId);
+          incorrectCards = allCards.where((card) => incorrectCardIds.contains(card.id)).toList();
+        }
+      }
+      
+      if (incorrectCards.isNotEmpty) {
+        setState(() {
+          _isReviewMode = true;
+          _currentCards = incorrectCards;
+          _currentCardIndex = 0;
+          _showAnswer = false;
+          _reviewCorrectAnswers = 0;
+          _reviewTotalAttempts = 0;
+        });
       } else {
         // Show message that no incorrect cards are available for review
         if (mounted) {
@@ -1085,7 +1134,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   
   void _backToOriginalDeck() async {
     // Load the original cards for the current category
-    final originalCards = await _databaseService.getCardsByCategory(_currentCategoryId);
+    List<Flashcard> originalCards;
+    
+    if (_isInFavoritesDeck()) {
+      // For Favorites deck, use getFavoriteCards
+      originalCards = await _databaseService.getFavoriteCards();
+    } else {
+      // For regular decks, use getCardsByCategory
+      originalCards = await _databaseService.getCardsByCategory(_currentCategoryId);
+    }
     
     setState(() {
       _isReviewMode = false;
@@ -1094,8 +1151,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _showAnswer = false;
     });
   }
-  
-  
 
   /// Handle pan start
   void _onPanStart(DragStartDetails details) {
@@ -1199,7 +1254,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Mark card as incorrect in database (persistent storage)
         final currentCard = _getCurrentFlashcard();
         if (currentCard.id > 0) {
-          await _databaseService.markCardIncorrectInDatabase(currentCard.id, _currentCategoryId);
+          if (_isInFavoritesDeck()) {
+            // For Favorites deck, mark as incorrect in the original deck
+            await _databaseService.markCardIncorrectInDatabase(currentCard.id, currentCard.categoryId);
+          } else {
+            // For regular decks, mark as incorrect in current deck
+            await _databaseService.markCardIncorrectInDatabase(currentCard.id, _currentCategoryId);
+          }
         }
         
         // Note: Review prompt visibility is now determined by database query
@@ -1415,12 +1476,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _currentCards[_currentCardIndex] = refreshedCard;
         });
         
-        // Navigation drawer will refresh when opened next time
+        // If we're in the Favorites deck and the card is no longer favorited, remove it
+        if (_isInFavoritesDeck() && !refreshedCard.isFavorite) {
+          _removeCardFromFavoritesDeck();
+        }
+        
+        // Refresh navigation drawer to update card counts
+        KaadoNavigationDrawer.forceRefreshCategoriesStatic();
       }
     } catch (e) {
       // Handle error silently or show a snackbar
       AppLogger.error('Error toggling favorite', e);
     }
+  }
+
+  /// Check if we're currently in the Favorites deck
+  bool _isInFavoritesDeck() {
+    if (_currentCards.isEmpty) return false;
+    
+    // Simple check: if we're in the Favorites deck, all cards should be favorites
+    // and we should have loaded them via getFavoriteCards()
+    return _currentCards.every((card) => card.isFavorite);
+  }
+
+  /// Remove the current card from the Favorites deck when unstarred
+  void _removeCardFromFavoritesDeck() {
+    if (_currentCards.isEmpty) return;
+    
+    setState(() {
+      // Remove the current card from the list
+      _currentCards.removeAt(_currentCardIndex);
+      
+      // Adjust the index if we're at the end
+      if (_currentCardIndex >= _currentCards.length) {
+        _currentCardIndex = _currentCards.length - 1;
+      }
+      
+      // If no more cards, reset to show placeholder
+      if (_currentCards.isEmpty) {
+        _currentCardIndex = 0;
+        _showAnswer = false;
+      }
+    });
   }
 
   /// Handle swipe gesture with SRS algorithm integration
@@ -1433,11 +1530,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       
       // Skip if no quality change (up/down swipes)
       if (quality == -1) {
-        AppLogger.info('Swipe gesture: $direction (no quality change)');
         return;
       }
-      
-      AppLogger.info('Swipe gesture: $direction (quality: $quality)');
       
       // Get or create user progress for this card
       UserProgress? progress = await _databaseService.getUserProgress(currentCard.id);
@@ -1462,8 +1556,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
         _totalAttempts++;
       }
-      
-      AppLogger.info('SRS updated: Card ${currentCard.id}, Quality: $quality, New interval: ${updatedProgress.interval} days');
       
     } catch (e) {
       AppLogger.error('Error handling swipe gesture', e);

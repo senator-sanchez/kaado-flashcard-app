@@ -31,6 +31,34 @@ class DatabaseService {
 
   static Database? _database;
   static bool _isInitializing = false;
+  
+  /// Force re-initialization of the database (useful for debugging)
+  static Future<void> resetDatabase() async {
+    AppLogger.info('Resetting database...');
+    _database?.close();
+    _database = null;
+    _isInitializing = false;
+  }
+
+  /// Ensure database is fully initialized before operations
+  Future<void> ensureDatabaseInitialized() async {
+    try {
+      AppLogger.info('Ensuring database is initialized...');
+      await database; // This will initialize if needed
+      
+      // Add a small delay for physical devices to ensure database is fully ready
+      await Future.delayed(Duration(milliseconds: 100));
+      
+      // Test database connectivity
+      final db = await database;
+      await db.rawQuery('SELECT 1');
+      
+      AppLogger.info('Database initialization verified and tested');
+    } catch (e) {
+      AppLogger.error('Failed to ensure database initialization: $e');
+      rethrow;
+    }
+  }
 
   /// Get the database instance, initializing if necessary
   Future<Database> get database async {
@@ -40,7 +68,7 @@ class DatabaseService {
     if (_isInitializing) {
       // Wait for the current initialization to complete with timeout
       int attempts = 0;
-      while (_isInitializing && attempts < 100) { // 1 second timeout
+      while (_isInitializing && attempts < 200) { // 2 second timeout for physical devices
         await Future.delayed(Duration(milliseconds: 10));
         attempts++;
       }
@@ -49,9 +77,12 @@ class DatabaseService {
     
     _isInitializing = true;
     try {
+      AppLogger.info('Starting database initialization...');
     _database = await _initDatabase();
+      AppLogger.info('Database initialization completed successfully');
     return _database!;
     } catch (e) {
+      AppLogger.error('Database initialization failed: $e');
       _database = null; // Reset on error
       rethrow;
     } finally {
@@ -62,44 +93,74 @@ class DatabaseService {
   /// Initialize the database using the migrated database file
   Future<Database> _initDatabase() async {
     try {
+      AppLogger.info('Starting database initialization...');
     final dbPath = await _getDatabasePath();
-    
+      AppLogger.info('Database path obtained: $dbPath');
+      
+      // Verify the database file exists and is readable
+      final dbFile = File(dbPath);
+      if (!dbFile.existsSync()) {
+        throw Exception('Database file does not exist at: $dbPath');
+      }
+      
+      // Check if database file is empty or corrupted
+      final fileSize = dbFile.lengthSync();
+      AppLogger.info('Database file size: $fileSize bytes');
+      if (fileSize == 0) {
+        throw Exception('Database file is empty (0 bytes)');
+      }
+      if (fileSize < 1000) {
+        AppLogger.warning('Database file is very small ($fileSize bytes) - may be corrupted');
+      }
+      
+      AppLogger.info('Opening database connection...');
     final db = await openDatabase(
       dbPath,
         readOnly: false,
-    );
+      );
+      AppLogger.info('Database connection opened successfully');
       
       // Create IncorrectCards table if it doesn't exist
+      AppLogger.info('Creating IncorrectCards table...');
       await _createIncorrectCardsTable(db);
+      AppLogger.info('IncorrectCards table created/verified');
     
     return db;
     } catch (e) {
       AppLogger.error('Error initializing database: $e');
+      AppLogger.error('Error type: ${e.runtimeType}');
       rethrow;
     }
   }
 
 
-  /// Get the database path - use the database directly from assets
+  /// Get the database path - use the original database from assets
   Future<String> _getDatabasePath() async {
+    try {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbPath = join(documentsDirectory.path, 'japanese.db');
     
-    // Copy database from assets to app documents directory
+      AppLogger.info('Database path: $dbPath');
+      AppLogger.info('Documents directory: ${documentsDirectory.path}');
+      AppLogger.info('Documents directory exists: ${documentsDirectory.existsSync()}');
+      
+      // Copy database from assets to app documents directory
     final dbFile = File(dbPath);
-    if (!dbFile.existsSync()) {
-      AppLogger.info('Copying database from assets...');
-      try {
-        final ByteData data = await rootBundle.load('assets/database/japanese.db');
-      await dbFile.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
-        AppLogger.info('Database copied to: $dbPath');
-      } catch (e) {
-        AppLogger.error('Error copying database from assets: $e');
-        rethrow;
-      }
+      if (!dbFile.existsSync()) {
+        AppLogger.info('Database file does not exist, copying from assets...');
+        await _copyDatabaseFromAssets(dbFile);
+      } else {
+        AppLogger.info('Database file already exists at: $dbPath');
+        AppLogger.info('Database file size: ${dbFile.lengthSync()} bytes');
+        AppLogger.info('Database file exists: ${dbFile.existsSync()}');
     }
     
     return dbPath;
+    } catch (e) {
+      AppLogger.error('Error in _getDatabasePath: $e');
+      AppLogger.error('Error type: ${e.runtimeType}');
+      rethrow;
+    }
   }
 
   // ===== DECK OPERATIONS =====
@@ -107,8 +168,14 @@ class DatabaseService {
   /// Get the complete deck tree with hierarchical structure
   Future<List<Deck>> getDeckTree() async {
     try {
+      AppLogger.info('Getting deck tree...');
     final db = await database;
+      AppLogger.info('Database connection established');
     
+      // Test basic database connectivity
+      final testQuery = await db.rawQuery('SELECT COUNT(*) as count FROM Deck');
+      AppLogger.info('Database test query result: $testQuery');
+      
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
       SELECT 
         d.id,
@@ -137,13 +204,95 @@ class DatabaseService {
         d.name
     ''');
 
-    final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
-    final result = _buildDeckHierarchy(allDecks);
-    return result;
+      AppLogger.info('Found ${maps.length} decks in database');
+      
+      if (maps.isEmpty) {
+        AppLogger.warning('No decks found in database - this may indicate a database issue');
+        // Try to create a basic deck structure as fallback
+        return _createFallbackDeckStructure();
+      }
+      
+      final List<Deck> allDecks = List.generate(maps.length, (i) => Deck.fromMap(maps[i]));
+      final result = _buildDeckHierarchy(allDecks);
+      AppLogger.info('Built deck hierarchy with ${result.length} root decks');
+      return result;
     } catch (e) {
       AppLogger.error('Error in getDeckTree: $e');
-      return [];
+      AppLogger.error('Error type: ${e.runtimeType}');
+      AppLogger.error('Stack trace: ${StackTrace.current}');
+      
+      // Return fallback deck structure
+      AppLogger.info('Returning fallback deck structure due to error');
+      return _createFallbackDeckStructure();
     }
+  }
+
+  /// Copy database from assets with retry mechanism
+  Future<void> _copyDatabaseFromAssets(File dbFile) async {
+    int attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        AppLogger.info('Attempt ${attempts + 1} to copy database from assets...');
+        
+        // Try the original asset path first
+        final ByteData data = await rootBundle.load('assets/database/japanese.db');
+        AppLogger.info('Asset loaded successfully, size: ${data.lengthInBytes} bytes');
+        
+        // Ensure the directory exists
+        final parentDir = dbFile.parent;
+        if (!parentDir.existsSync()) {
+          AppLogger.info('Creating parent directory: ${parentDir.path}');
+          await parentDir.create(recursive: true);
+        }
+        
+        // Delete existing file if it exists (in case of corruption)
+        if (dbFile.existsSync()) {
+          AppLogger.info('Deleting existing corrupted file...');
+          await dbFile.delete();
+        }
+        
+        // Write the database file
+        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        await dbFile.writeAsBytes(bytes);
+        
+        // Verify the file was written correctly
+        if (!dbFile.existsSync()) {
+          throw Exception('Database file was not created');
+        }
+        
+        final writtenSize = dbFile.lengthSync();
+        if (writtenSize != data.lengthInBytes) {
+          throw Exception('Database file size mismatch: expected ${data.lengthInBytes}, got $writtenSize');
+        }
+        
+        AppLogger.info('Database copied successfully to: ${dbFile.path}');
+        AppLogger.info('Database file size: $writtenSize bytes');
+        AppLogger.info('Database file exists: ${dbFile.existsSync()}');
+        return; // Success
+        
+      } catch (e) {
+        attempts++;
+        AppLogger.error('Error copying database (attempt $attempts): $e');
+        AppLogger.error('Error type: ${e.runtimeType}');
+        
+        if (attempts >= maxAttempts) {
+          AppLogger.error('Failed to copy database after $maxAttempts attempts');
+          rethrow;
+        }
+        
+        // Wait before retry
+        await Future.delayed(Duration(milliseconds: 500 * attempts));
+      }
+    }
+  }
+
+
+  /// Create a fallback deck structure when database fails
+  List<Deck> _createFallbackDeckStructure() {
+    AppLogger.info('Creating fallback deck structure - empty structure');
+    return []; // Return empty list - no hardcoded data
   }
 
   /// Build the hierarchical deck structure from flat list

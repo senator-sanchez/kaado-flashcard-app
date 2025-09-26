@@ -53,6 +53,11 @@ class KaadoNavigationDrawer extends StatefulWidget {
   static void setSwipeOperation(bool isSwipe) {
     _KaadoNavigationDrawerState.setSwipeOperationInternal(isSwipe);
   }
+
+  /// Force refresh categories (static method for external access)
+  static void forceRefreshCategoriesStatic() {
+    _KaadoNavigationDrawerState.forceRefreshCategoriesStatic();
+  }
 }
 
 enum DrawerView { main, cards, review, settings }
@@ -704,6 +709,13 @@ class _KaadoNavigationDrawerState extends State<KaadoNavigationDrawer> {
   /// Internal method to set swipe operation flag
   static void setSwipeOperationInternal(bool isSwipe) {
     _isSwipeOperation = isSwipe;
+  }
+
+  /// Static method to force refresh categories
+  static void forceRefreshCategoriesStatic() {
+    // Clear static cache to force refresh
+    _staticCategories = null;
+    _staticLastLoadTime = null;
   }
 
   void _openCardDisplaySettings() async {
