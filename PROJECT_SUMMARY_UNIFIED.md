@@ -3,7 +3,7 @@
 ## **App Overview**
 **Kaado** is a Flutter-based Japanese language learning app that uses flashcards for vocabulary practice. The app features a comprehensive theme system, favorites functionality, advanced navigation, spaced repetition system, and persistent incorrect card tracking for enhanced learning.
 
-## **Current Version: v12.3 (Production Ready - Complete Knowledge Base)**
+## **Current Version: v12.3 (Production Ready - Favorites Deck Review System Complete)**
 
 ### **Core Features**
 - **Flashcard System**: Japanese vocabulary cards with kana, hiragana, English, and romaji
@@ -468,6 +468,7 @@ Tags:
 - [ ] Tags confirmed on GitHub
 
 ### **Version History**
+- **v12.3** (2025-01-25): Favorites deck review system complete with full functionality
 - **v12.2** (2025-01-25): GitHub workflow documentation and version management
 - **v12.1** (2025-01-25): Complete code cleanup and knowledge base documentation
 - **v12.0**: Previous stable version
