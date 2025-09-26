@@ -17,7 +17,7 @@ import '../services/app_logger.dart';
 
 // Project imports - Screens
 import '../screens/spaced_repetition_settings_screen.dart';
-import '../screens/card_display_settings_screen.dart';
+import '../screens/language_agnostic_display_settings_screen.dart';
 
 // Project imports - Utils
 import '../utils/app_theme.dart';
@@ -552,20 +552,20 @@ class _KaadoNavigationDrawerState extends ConsumerState<KaadoNavigationDrawer> {
               ),
             ),
         
+        // Card Display Settings (Language-Agnostic)
+        DrawerTile(
+          title: 'Card Display Settings',
+          subtitle: 'Customize what appears on front and back of cards',
+          icon: Icons.visibility,
+          onTap: () => _openLanguageAgnosticCardDisplaySettings(),
+        ),
+        
         // Spaced Repetition Settings
         DrawerTile(
           title: 'Spaced Repetition Settings',
           subtitle: 'Customize review intervals and learning pace',
           icon: Icons.schedule,
           onTap: () => _openSpacedRepetitionSettings(),
-        ),
-        
-        // Card Display Settings
-        DrawerTile(
-          title: 'Card Display Settings',
-          subtitle: 'Customize what appears on front and back of cards',
-          icon: Icons.visibility,
-          onTap: () => _openCardDisplaySettings(),
         ),
         
         // Bottom padding
@@ -581,32 +581,50 @@ class _KaadoNavigationDrawerState extends ConsumerState<KaadoNavigationDrawer> {
     // Close FAB first
     widget.onCloseFab?.call();
     
-    // Close the drawer first
-              Navigator.of(context).pop();
-              
-              // Load current settings from database
-              final currentSettings = await widget.databaseService.loadSpacedRepetitionSettings();
-              
-    // Use a post-frame callback to ensure the drawer is fully closed
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => SpacedRepetitionSettingsScreen(
-                    initialSettings: currentSettings,
-                    onSettingsChanged: (settings) async {
-                      try {
-                        await widget.databaseService.saveSpacedRepetitionSettings(settings);
-                        // Update the spaced repetition service with new settings
-                        final spacedRepetitionService = SpacedRepetitionService();
-                        spacedRepetitionService.updateSettings(settings);
-                      } catch (e) {
-                        // Error saving spaced repetition settings: $e
-                      }
-                    },
-                  ),
-                ),
-              );
-    });
+    // Load current settings from database
+    final currentSettings = await widget.databaseService.loadSpacedRepetitionSettings();
+    
+    // Push settings screen directly (don't close drawer first)
+    // This way back button returns to drawer menu
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => SpacedRepetitionSettingsScreen(
+          initialSettings: currentSettings,
+          onSettingsChanged: (settings) async {
+            try {
+              await widget.databaseService.saveSpacedRepetitionSettings(settings);
+              // Update the spaced repetition service with new settings
+              final spacedRepetitionService = SpacedRepetitionService();
+              spacedRepetitionService.updateSettings(settings);
+            } catch (e) {
+              // Error saving spaced repetition settings: $e
+            }
+          },
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Slide from right with fade
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+          
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var offsetAnimation = animation.drive(tween);
+          
+          var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).chain(
+            CurveTween(curve: Curves.easeInOut),
+          ).animate(animation);
+          
+          return SlideTransition(
+            position: offsetAnimation,
+            child: FadeTransition(
+              opacity: fadeAnimation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: Duration(milliseconds: 300),
+      ),
+    );
   }
 
   Future<void> _loadCategories() async {
@@ -725,21 +743,42 @@ class _KaadoNavigationDrawerState extends ConsumerState<KaadoNavigationDrawer> {
     _staticLastLoadTime = null;
   }
 
-  void _openCardDisplaySettings() async {
+  void _openLanguageAgnosticCardDisplaySettings() async {
     // Close FAB first
     widget.onCloseFab?.call();
     
-    // Close the drawer first
-    Navigator.of(context).pop();
-    
-    // Use a post-frame callback to ensure the drawer is fully closed
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => CardDisplaySettingsScreen(),
+    // Push settings screen directly (don't close drawer first)
+    // This way back button returns to drawer menu
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => LanguageAgnosticDisplaySettingsScreen(
+          targetLanguage: 'japanese',
+          userLanguage: 'english',
         ),
-      );
-    });
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Slide from right with fade
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+          
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var offsetAnimation = animation.drive(tween);
+          
+          var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).chain(
+            CurveTween(curve: Curves.easeInOut),
+          ).animate(animation);
+          
+          return SlideTransition(
+            position: offsetAnimation,
+            child: FadeTransition(
+              opacity: fadeAnimation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: Duration(milliseconds: 300),
+      ),
+    );
   }
 
   /// Trigger incorrect cards review in home screen

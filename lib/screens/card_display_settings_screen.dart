@@ -58,6 +58,8 @@ class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsS
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Settings saved successfully')),
         );
+        // Close the screen and return to main screen after saving
+        Navigator.of(context).pop();
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -119,7 +121,12 @@ class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsS
               ),
             )
           : SingleChildScrollView(
-              padding: EdgeInsets.all(AppSizes.paddingMedium),
+              padding: EdgeInsets.only(
+                left: AppSizes.paddingMedium,
+                right: AppSizes.paddingMedium,
+                top: AppSizes.paddingMedium,
+                bottom: AppSizes.paddingLarge + 80, // Extra padding for Android navigation
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -209,8 +216,14 @@ class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsS
   }
 
   Widget _buildBackCardSettings(AppThemeExtension appTheme) {
-    // Always show all back options in consistent order
-    final allBackOptions = BackCardOption.values;
+    // Always show all back options in consistent static order
+    final allBackOptions = [
+      BackCardOption.kana,
+      BackCardOption.hiragana,
+      BackCardOption.kanji,
+      BackCardOption.romaji,
+      BackCardOption.english,
+    ];
 
     return Card(
       color: appTheme.cardBackground,
@@ -244,12 +257,27 @@ class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsS
                 break;
             }
 
+            // Check if this option would conflict with front card option
+            final wouldConflict = _wouldConflictWithFront(option);
+            final isCurrentlySelected = _settings.backCardOptions.contains(option);
+
             return _buildCheckboxOption(
               title,
               subtitle,
               option,
-              _settings.backCardOptions.contains(option),
+              isCurrentlySelected,
               (isChecked) {
+                if (isChecked && wouldConflict) {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Cannot select $title for back when it\'s already selected for front'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+                
                 final newBackOptions = Set<BackCardOption>.from(_settings.backCardOptions);
                 if (isChecked) {
                   newBackOptions.add(option);
@@ -259,6 +287,7 @@ class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsS
                 setState(() => _settings = _settings.copyWith(backCardOptions: newBackOptions));
               },
               appTheme,
+              isDisabled: wouldConflict && !isCurrentlySelected,
             );
           }).toList(),
         ),
@@ -334,31 +363,48 @@ class _CardDisplaySettingsScreenState extends ConsumerState<CardDisplaySettingsS
     );
   }
 
+  /// Check if a back card option would conflict with the current front card option
+  bool _wouldConflictWithFront(BackCardOption backOption) {
+    switch (_settings.frontCardOption) {
+      case FrontCardOption.kana:
+        return backOption == BackCardOption.kana;
+      case FrontCardOption.hiragana:
+        return backOption == BackCardOption.hiragana;
+      case FrontCardOption.kanji:
+        return backOption == BackCardOption.kanji;
+      case FrontCardOption.romaji:
+        return backOption == BackCardOption.romaji;
+      case FrontCardOption.english:
+        return backOption == BackCardOption.english;
+    }
+  }
+
   Widget _buildCheckboxOption<T>(
     String title,
     String subtitle,
     T value,
     bool isChecked,
     ValueChanged<bool> onChanged,
-    AppThemeExtension appTheme,
-  ) {
+    AppThemeExtension appTheme, {
+    bool isDisabled = false,
+  }) {
     return CheckboxListTile(
       title: Text(
         title,
         style: TextStyle(
-          color: appTheme.primaryText,
+          color: isDisabled ? appTheme.secondaryText.withValues(alpha: 0.5) : appTheme.primaryText,
           fontWeight: FontWeight.w500,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
-          color: appTheme.secondaryText,
+          color: isDisabled ? appTheme.secondaryText.withValues(alpha: 0.5) : appTheme.secondaryText,
           fontSize: 12,
         ),
       ),
       value: isChecked,
-      onChanged: (checked) => onChanged(checked!),
+      onChanged: isDisabled ? null : (checked) => onChanged(checked!),
       activeColor: appTheme.primaryBlue,
       controlAffinity: ListTileControlAffinity.leading,
     );

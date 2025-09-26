@@ -580,43 +580,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ),
         ),
         centerTitle: true,
-        actions: [
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: appTheme.appBarIcon),
-            onSelected: (value) {
-              switch (value) {
-                case 'card_settings':
-                  _openCardDisplaySettings();
-                  break;
-                case 'spaced_repetition':
-                  _openSpacedRepetitionSettings();
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                value: 'card_settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.visibility, color: appTheme.primaryText),
-                    SizedBox(width: 8),
-                    Text('Card Display Settings'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'spaced_repetition',
-                child: Row(
-                  children: [
-                    Icon(Icons.schedule, color: appTheme.primaryText),
-                    SizedBox(width: 8),
-                    Text('Spaced Repetition Settings'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+        actions: [],
       ),
       body: Stack(
         children: [
@@ -953,6 +917,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       onTap: _isDeckCompleted() ? _resetCards : _toggleAnswer,
       onEdit: _showEditCardDialog,
       onToggleFavorite: _toggleFavorite,
+      displaySettings: _cardDisplayService.currentSettings,
     );
 
     return _buildSwipeableCard(cardWidget);
@@ -1581,19 +1546,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       
     } catch (e) {
       AppLogger.error('Error handling swipe gesture', e);
-    }
-  }
-
-  /// Open card display settings
-  void _openCardDisplaySettings() async {
-    try {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => CardDisplaySettingsScreen(),
-        ),
-      );
-    } catch (e) {
-      AppLogger.error('Error opening card display settings', e);
     }
   }
 

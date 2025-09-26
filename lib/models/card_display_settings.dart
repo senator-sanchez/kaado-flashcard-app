@@ -124,10 +124,28 @@ class CardDisplaySettings {
 
   /// Check if front and back options are different (prevent duplication)
   bool get hasValidConfiguration {
-    return !backCardOptions.contains(FrontCardOption.values.firstWhere(
-      (front) => front.name == frontCardOption.name,
-      orElse: () => FrontCardOption.kana,
-    ));
+    // Convert front card option to back card option for comparison
+    BackCardOption? frontAsBackOption;
+    switch (frontCardOption) {
+      case FrontCardOption.kana:
+        frontAsBackOption = BackCardOption.kana;
+        break;
+      case FrontCardOption.hiragana:
+        frontAsBackOption = BackCardOption.hiragana;
+        break;
+      case FrontCardOption.kanji:
+        frontAsBackOption = BackCardOption.kanji;
+        break;
+      case FrontCardOption.romaji:
+        frontAsBackOption = BackCardOption.romaji;
+        break;
+      case FrontCardOption.english:
+        frontAsBackOption = BackCardOption.english;
+        break;
+    }
+    
+    // Check if the front option is not in the back options
+    return frontAsBackOption == null || !backCardOptions.contains(frontAsBackOption);
   }
 
   @override
