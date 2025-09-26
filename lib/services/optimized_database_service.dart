@@ -28,7 +28,7 @@ class OptimizedDatabaseService {
 
   // Connection pooling
   static Database? _database;
-  static bool _isInitializing = false;
+  // Initialization flag for database setup
   static final List<Database> _connectionPool = [];
   static const int _maxConnections = 5;
   static const int _minConnections = 2;

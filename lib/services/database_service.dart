@@ -226,38 +226,7 @@ class DatabaseService {
     return []; // Return empty list - no hardcoded data
   }
 
-  /// Build the hierarchical deck structure from flat list
-  List<Deck> _buildDeckHierarchy(List<Deck> allDecks) {
-    final Map<int, List<Deck>> childrenMap = {};
-    final List<Deck> rootDecks = [];
-    
-    // Group decks by parent ID
-    for (final deck in allDecks) {
-      if (deck.parentId == null) {
-        rootDecks.add(deck);
-      } else {
-        childrenMap.putIfAbsent(deck.parentId!, () => []).add(deck);
-      }
-    }
-    
-    // Build the hierarchy by creating new Deck objects with children
-    return _buildHierarchyRecursive(rootDecks, childrenMap);
-  }
-  
-  /// Recursively build hierarchy with children
-  List<Deck> _buildHierarchyRecursive(List<Deck> decks, Map<int, List<Deck>> childrenMap) {
-    final List<Deck> result = [];
-    
-    for (final deck in decks) {
-      final children = childrenMap[deck.id] ?? [];
-      final childrenWithHierarchy = _buildHierarchyRecursive(children, childrenMap);
-      
-      final deckWithChildren = deck.copyWith(children: childrenWithHierarchy);
-      result.add(deckWithChildren);
-    }
-    
-    return result;
-  }
+  // Note: _buildDeckHierarchy method removed - using isolate version instead
 
   // ===== CARD OPERATIONS =====
 
@@ -1530,7 +1499,7 @@ class DatabaseService {
 Future<List<Deck>> _getDeckTreeInIsolate(Database db) async {
   try {
     // Test basic database connectivity
-    final testQuery = await db.rawQuery('SELECT COUNT(*) as count FROM Deck');
+    await db.rawQuery('SELECT COUNT(*) as count FROM Deck');
     
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
       SELECT 
@@ -1571,100 +1540,7 @@ Future<List<Deck>> _getDeckTreeInIsolate(Database db) async {
   }
 }
 
-/// Get cards with fields by deck in isolate
-Future<List<Card>> _getCardsWithFieldsByDeckInIsolate(Map<String, dynamic> params) async {
-  final db = params['database'] as Database;
-  final deckId = params['deckId'] as int;
-  
-  
-  try {
-    // SIMPLIFIED: First get cards, then get fields separately
-    final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT 
-        c.id,
-        c.deck_id,
-        c.notes,
-        c.is_dirty,
-        c.updated_at,
-        d.name as deck_name
-      FROM Card c
-      INNER JOIN Deck d ON c.deck_id = d.id
-      WHERE c.deck_id = ?
-      ORDER BY c.id
-    ''', [deckId]);
-
-    if (maps.isNotEmpty) {
-    } else {
-      // Debug: Check if the deck exists
-      final deckCheck = await db.rawQuery('SELECT id, name FROM Deck WHERE id = ?', [deckId]);
-      
-      // Debug: Check if cards exist for this deck
-      final cardCheck = await db.rawQuery('SELECT COUNT(*) as count FROM Card WHERE deck_id = ?', [deckId]);
-      
-      // Debug: Check the actual query we're using
-      final testQuery = await db.rawQuery('''
-        SELECT c.id, c.deck_id, d.name as deck_name
-        FROM Card c
-        INNER JOIN Deck d ON c.deck_id = d.id
-        WHERE c.deck_id = ?
-        LIMIT 5
-      ''', [deckId]);
-    }
-
-    // Build cards from simplified query
-    final List<Card> cards = [];
-    
-    for (final map in maps) {
-      final cardId = map['id'] as int;
-      
-      // Get fields for this card separately
-      final fieldMaps = await db.rawQuery('''
-        SELECT 
-          cf.id,
-          cf.card_id,
-          cf.field_definition_id,
-          cf.field_value,
-          cf.is_dirty,
-          cf.updated_at,
-          fd.field_type,
-          fd.is_front,
-          fd.is_back,
-          fd.sort_order
-        FROM CardField cf
-        LEFT JOIN FieldDefinition fd ON cf.field_definition_id = fd.id
-        WHERE cf.card_id = ?
-        ORDER BY fd.sort_order
-      ''', [cardId]);
-      
-      final List<CardField> fields = fieldMaps.map((fieldMap) => CardField.fromMap({
-        'id': fieldMap['id'],
-        'card_id': fieldMap['card_id'],
-        'field_definition_id': fieldMap['field_definition_id'],
-        'field_value': fieldMap['field_value'],
-        'is_dirty': fieldMap['is_dirty'],
-        'updated_at': fieldMap['updated_at'],
-        'field_type': fieldMap['field_type'],
-        'is_front': fieldMap['is_front'],
-        'is_back': fieldMap['is_back'],
-      })).toList();
-      
-      // Create card with fields
-      final card = Card.fromMap({
-        'id': map['id'],
-        'deck_id': map['deck_id'],
-        'notes': map['notes'],
-        'is_dirty': map['is_dirty'],
-        'updated_at': map['updated_at'],
-      }).copyWith(fields: fields);
-      
-      cards.add(card);
-    }
-    
-    return cards;
-  } catch (e) {
-    return [];
-  }
-}
+// Note: _getCardsWithFieldsByDeckInIsolate method removed - using direct database calls
 
 /// Build deck hierarchy in isolate
 List<Deck> _buildDeckHierarchyInIsolate(List<Deck> allDecks) {

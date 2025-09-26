@@ -21,7 +21,6 @@ class PerformanceMonitorService {
   bool _isMonitoring = false;
   
   // Performance thresholds
-  static const Duration _targetFrameTime = Duration(milliseconds: 16); // 60fps
   static const Duration _warningFrameTime = Duration(milliseconds: 33); // 30fps
   static const int _maxFrameTimeHistory = 100;
   static const int _maxOperationTimeHistory = 50;
@@ -249,9 +248,7 @@ Performance Summary:
     
     final warnings = getPerformanceWarnings();
     if (warnings.isNotEmpty) {
-      for (final warning in warnings) {
-      }
-    } else {
+      // Process warnings if needed
     }
   }
   

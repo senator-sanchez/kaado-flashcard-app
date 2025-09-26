@@ -12,9 +12,10 @@ import 'constants/app_strings.dart';
 import 'firebase_options.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/theme_service.dart';
-import 'services/optimized_database_service.dart';
+import 'services/performance_optimization_service.dart';
+import 'services/async_database_service.dart';
 import 'services/isolate_service.dart';
-import 'services/performance_monitor_service.dart';
+import 'services/ui_thread_service.dart';
 
 /// Main entry point for the Kaado Japanese Language Learning App
 void main() async {
@@ -44,20 +45,24 @@ void main() async {
 /// Initialize optimized services for better performance
 Future<void> _initializeOptimizedServices() async {
   try {
-    
     // Initialize theme service
     await ThemeService().initialize();
     
-    // Initialize performance monitoring
-    final performanceMonitor = PerformanceMonitorService();
-    performanceMonitor.startMonitoring();
+    // Initialize comprehensive performance optimization service
+    final performanceOptimization = PerformanceOptimizationService();
+    await performanceOptimization.initialize();
     
-    // Initialize isolate service for multithreading
-    await IsolateService().initialize();
+    // Initialize async database service
+    final asyncDatabaseService = AsyncDatabaseService();
+    await asyncDatabaseService.initialize();
     
-    // Initialize optimized database service
-    final databaseService = OptimizedDatabaseService();
-    await databaseService.initialize();
+    // Initialize UI thread service
+    final uiThreadService = UIThreadService();
+    uiThreadService.initialize();
+    
+    // Initialize isolate service for background processing
+    final isolateService = IsolateService();
+    await isolateService.initialize();
     
   } catch (e) {
     // Continue with fallback initialization

@@ -1,409 +1,519 @@
 // Dart imports
 import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
+
+// Flutter imports
+import 'package:flutter/foundation.dart';
 
 // Project imports
 import 'app_logger.dart';
-import 'database_service.dart';
-import 'optimized_database_service.dart';
-import 'spaced_repetition_service.dart';
-import '../models/deck.dart';
-import '../models/card.dart';
-import '../models/user_progress.dart';
-import '../models/flashcard.dart';
 
-/// Service for running heavy operations in background isolates
-/// Prevents main thread blocking during database operations and computations
+/// Service for managing isolate-based background processing
+/// Handles JSON parsing, image processing, and heavy computations off the main thread
 class IsolateService {
   static final IsolateService _instance = IsolateService._internal();
   factory IsolateService() => _instance;
   IsolateService._internal();
 
   // Isolate management
-  Isolate? _isolate;
-  SendPort? _sendPort;
-  ReceivePort? _receivePort;
-  int _requestId = 0;
-  final Map<int, Completer<dynamic>> _pendingRequests = {};
+  Isolate? _backgroundIsolate;
+  SendPort? _backgroundSendPort;
+  ReceivePort? _backgroundReceivePort;
+  final Map<String, Completer<dynamic>> _pendingOperations = {};
+  int _operationId = 0;
+
+  // Performance tracking
+  // Performance monitoring available but not actively used
 
   /// Initialize the isolate service
   Future<void> initialize() async {
-    if (_isolate != null) {
-      return; // Already initialized
-    }
-
     try {
-      
-      _receivePort = ReceivePort();
-      _isolate = await Isolate.spawn(
-        _isolateEntryPoint,
-        _receivePort!.sendPort,
-        debugName: 'DatabaseIsolate',
-      );
-
-      // Listen for responses from isolate
-      _receivePort!.listen(_handleIsolateResponse);
-
-      // Wait for isolate to be ready
-      await _waitForIsolateReady();
-      
+      await _startBackgroundIsolate();
+      AppLogger.info('IsolateService initialized successfully');
     } catch (e) {
       AppLogger.error('Failed to initialize IsolateService: $e');
-      // Don't rethrow, just log the error and continue
+      rethrow;
     }
   }
 
-  /// Wait for isolate to be ready
-  Future<void> _waitForIsolateReady() async {
-    final completer = Completer<void>();
-    late StreamSubscription subscription;
-    
-    subscription = _receivePort!.listen((message) {
-      if (message is Map<String, dynamic> && message['type'] == 'ready') {
-        _sendPort = message['sendPort'] as SendPort;
-        completer.complete();
-        subscription.cancel();
-      }
-    });
+  /// Start background isolate for heavy operations
+  Future<void> _startBackgroundIsolate() async {
+    _backgroundReceivePort = ReceivePort();
+    _backgroundIsolate = await Isolate.spawn(
+      _backgroundIsolateEntryPoint,
+      _backgroundReceivePort!.sendPort,
+    );
 
-    // Timeout after 5 seconds
-    Timer(Duration(seconds: 5), () {
-      if (!completer.isCompleted) {
-        subscription.cancel();
-        completer.completeError('Isolate initialization timeout');
+    // Listen for messages from background isolate
+    _backgroundReceivePort!.listen(_handleBackgroundMessageInMain);
+  }
+
+  /// Background isolate entry point
+  static void _backgroundIsolateEntryPoint(SendPort mainSendPort) {
+    final backgroundReceivePort = ReceivePort();
+    mainSendPort.send(backgroundReceivePort.sendPort);
+
+    backgroundReceivePort.listen((message) {
+      _handleBackgroundMessageInIsolate(message, mainSendPort);
+    });
+  }
+
+  /// Handle messages in background isolate
+  static void _handleBackgroundMessageInIsolate(dynamic message, SendPort mainSendPort) {
+    if (message is Map<String, dynamic>) {
+      final operation = message['operation'] as String;
+      final operationId = message['operationId'] as String;
+      final data = message['data'];
+
+      try {
+        dynamic result;
+        switch (operation) {
+          case 'parseJson':
+            result = _parseJsonInIsolate(data);
+            break;
+          case 'encodeJson':
+            result = _encodeJsonInIsolate(data);
+            break;
+          case 'processImage':
+            result = _processImageInIsolate(data);
+            break;
+          case 'compressImage':
+            result = _compressImageInIsolate(data);
+            break;
+          case 'calculateSRS':
+            result = _calculateSRSInIsolate(data);
+            break;
+          case 'processDatabaseQuery':
+            result = _processDatabaseQueryInIsolate(data);
+            break;
+          default:
+            throw Exception('Unknown operation: $operation');
+        }
+
+        mainSendPort.send({
+          'operationId': operationId,
+          'success': true,
+          'result': result,
+        });
+      } catch (e) {
+        mainSendPort.send({
+          'operationId': operationId,
+          'success': false,
+          'error': e.toString(),
+        });
       }
+    }
+  }
+
+  /// Handle messages from background isolate in main isolate
+  void _handleBackgroundMessageInMain(dynamic message) {
+    if (message is Map<String, dynamic>) {
+      final operationId = message['operationId'] as String;
+      final completer = _pendingOperations.remove(operationId);
+        
+        if (completer != null) {
+        if (message['success'] == true) {
+          completer.complete(message['result']);
+          } else {
+          completer.completeError(Exception(message['error']));
+        }
+      }
+    }
+  }
+
+  /// Parse JSON in background isolate
+  Future<Map<String, dynamic>> parseJson(String jsonString) async {
+    return await _sendToBackgroundIsolate('parseJson', jsonString);
+  }
+
+  /// Encode JSON in background isolate
+  Future<String> encodeJson(Map<String, dynamic> data) async {
+    return await _sendToBackgroundIsolate('encodeJson', data);
+  }
+
+  /// Process image in background isolate
+  Future<Uint8List> processImage(Uint8List imageData, {
+    int? width,
+    int? height,
+    double? quality,
+  }) async {
+    return await _sendToBackgroundIsolate('processImage', {
+      'imageData': imageData,
+      'width': width,
+      'height': height,
+      'quality': quality,
+    });
+  }
+
+  /// Compress image in background isolate
+  Future<Uint8List> compressImage(Uint8List imageData, {double quality = 0.8}) async {
+    return await _sendToBackgroundIsolate('compressImage', {
+      'imageData': imageData,
+      'quality': quality,
+    });
+  }
+
+  /// Calculate SRS algorithm in background isolate
+  Future<Map<String, dynamic>> calculateSRS(Map<String, dynamic> srsData) async {
+    return await _sendToBackgroundIsolate('calculateSRS', srsData);
+  }
+
+  /// Process database query results in background isolate
+  Future<List<Map<String, dynamic>>> processDatabaseQuery(
+    List<Map<String, dynamic>> queryResults,
+    String operation,
+  ) async {
+    return await _sendToBackgroundIsolate('processDatabaseQuery', {
+      'queryResults': queryResults,
+      'operation': operation,
+    });
+  }
+
+  /// Send operation to background isolate
+  Future<T> _sendToBackgroundIsolate<T>(String operation, dynamic data) async {
+    if (_backgroundSendPort == null) {
+      throw Exception('Background isolate not initialized');
+    }
+
+    final operationId = '${++_operationId}';
+    final completer = Completer<T>();
+    _pendingOperations[operationId] = completer;
+
+    _backgroundSendPort!.send({
+        'operation': operation,
+      'operationId': operationId,
+      'data': data,
     });
 
     return completer.future;
   }
 
-  /// Handle responses from isolate
-  void _handleIsolateResponse(dynamic message) {
-    if (message is Map<String, dynamic>) {
-      final requestId = message['requestId'] as int?;
-      if (requestId != null) {
-        final completer = _pendingRequests.remove(requestId);
-        
-        if (completer != null) {
-          if (message['error'] != null) {
-            completer.completeError(message['error']);
-          } else {
-            completer.complete(message['result']);
-          }
-        }
+  /// Parse JSON in isolate
+  static Map<String, dynamic> _parseJsonInIsolate(dynamic data) {
+    final jsonString = data as String;
+    return jsonDecode(jsonString) as Map<String, dynamic>;
+  }
+
+  /// Encode JSON in isolate
+  static String _encodeJsonInIsolate(dynamic data) {
+    final map = data as Map<String, dynamic>;
+    return jsonEncode(map);
+  }
+
+  /// Process image in isolate
+  static Uint8List _processImageInIsolate(dynamic data) {
+    final map = data as Map<String, dynamic>;
+    final imageData = map['imageData'] as Uint8List;
+    // Note: width, height, quality parameters available for future implementation
+    // For now, return original data - implement actual image processing
+    // This would typically involve image resizing, format conversion, etc.
+    return imageData;
+  }
+
+  /// Compress image in isolate
+  static Uint8List _compressImageInIsolate(dynamic data) {
+    final map = data as Map<String, dynamic>;
+    final imageData = map['imageData'] as Uint8List;
+    // Note: quality parameter available for future implementation
+    // For now, return original data - implement actual compression
+    // This would typically involve JPEG compression, quality reduction, etc.
+    return imageData;
+  }
+
+  /// Calculate SRS algorithm in isolate
+  static Map<String, dynamic> _calculateSRSInIsolate(dynamic data) {
+    final map = data as Map<String, dynamic>;
+    
+    // Extract SRS parameters
+    final interval = map['interval'] as int;
+    final repetitions = map['repetitions'] as int;
+    final easeFactor = map['easeFactor'] as double;
+    final quality = map['quality'] as int;
+    
+    // SuperMemo 2 algorithm implementation
+    double newEaseFactor = easeFactor;
+    int newInterval = interval;
+    int newRepetitions = repetitions;
+    
+    if (quality >= 3) {
+      // Correct answer
+      if (repetitions == 0) {
+        newInterval = 1;
+      } else if (repetitions == 1) {
+        newInterval = 6;
+      } else {
+        newInterval = (interval * easeFactor).round();
+      }
+      newRepetitions = repetitions + 1;
+      newEaseFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    } else {
+      // Incorrect answer
+      newRepetitions = 0;
+      newInterval = 1;
+      newEaseFactor = easeFactor - 0.2;
+    }
+    
+    // Clamp ease factor
+    newEaseFactor = newEaseFactor.clamp(1.3, 2.5);
+    
+    return {
+      'interval': newInterval,
+      'repetitions': newRepetitions,
+      'easeFactor': newEaseFactor,
+      'nextReview': DateTime.now().add(Duration(days: newInterval)).millisecondsSinceEpoch,
+    };
+  }
+
+  /// Process database query results in isolate
+  static List<Map<String, dynamic>> _processDatabaseQueryInIsolate(dynamic data) {
+    final map = data as Map<String, dynamic>;
+    final queryResults = map['queryResults'] as List<Map<String, dynamic>>;
+    final operation = map['operation'] as String;
+    
+    // Process query results based on operation type
+    switch (operation) {
+      case 'getDeckTree':
+        return _processDeckTreeResults(queryResults);
+      case 'getCardsWithFields':
+        return _processCardsWithFieldsResults(queryResults);
+      case 'getUserProgress':
+        return _processUserProgressResults(queryResults);
+      default:
+        return queryResults;
+    }
+  }
+
+  /// Process deck tree results
+  static List<Map<String, dynamic>> _processDeckTreeResults(
+    List<Map<String, dynamic>> results,
+  ) {
+    // Build hierarchy in isolate
+    final Map<int, List<Map<String, dynamic>>> childrenMap = {};
+    final List<Map<String, dynamic>> rootDecks = [];
+    
+    for (final deck in results) {
+      final parentId = deck['parent_id'];
+      if (parentId == null) {
+        rootDecks.add(deck);
+      } else {
+        childrenMap.putIfAbsent(parentId, () => []).add(deck);
       }
     }
+    
+    return _buildHierarchyRecursive(rootDecks, childrenMap);
+  }
+
+  /// Process cards with fields results
+  static List<Map<String, dynamic>> _processCardsWithFieldsResults(
+    List<Map<String, dynamic>> results,
+  ) {
+    // Group fields by card ID
+    final Map<int, List<Map<String, dynamic>>> cardFieldsMap = {};
+    
+    for (final row in results) {
+      final cardId = row['card_id'] as int;
+      cardFieldsMap.putIfAbsent(cardId, () => []).add(row);
+    }
+    
+    // Build card objects with fields
+    final List<Map<String, dynamic>> cards = [];
+    for (final entry in cardFieldsMap.entries) {
+      final cardId = entry.key;
+      final fields = entry.value;
+      
+      // Get card data from first field
+      final firstField = fields.first;
+      final card = {
+        'id': cardId,
+        'deck_id': firstField['deck_id'],
+        'notes': firstField['notes'],
+        'is_dirty': firstField['is_dirty'],
+        'updated_at': firstField['updated_at'],
+        'fields': fields.map((field) => {
+          'id': field['field_id'],
+          'card_id': cardId,
+          'field_definition_id': field['field_definition_id'],
+          'field_value': field['field_value'],
+          'field_type': field['field_type'],
+          'is_front': field['is_front'],
+          'is_back': field['is_back'],
+        }).toList(),
+      };
+      
+      cards.add(card);
+    }
+    
+    return cards;
+  }
+
+  /// Process user progress results
+  static List<Map<String, dynamic>> _processUserProgressResults(
+    List<Map<String, dynamic>> results,
+  ) {
+    // Calculate SRS statistics
+    int totalCards = results.length;
+    int masteredCards = 0;
+    int dueCards = 0;
+    double totalEaseFactor = 0.0;
+    
+    final now = DateTime.now();
+    
+    for (final progress in results) {
+      if (progress['is_mastered'] == 1) {
+        masteredCards++;
+      }
+      
+      final nextReview = progress['next_review'] as String?;
+      if (nextReview != null) {
+        try {
+          final nextReviewDate = DateTime.parse(nextReview);
+          if (nextReviewDate.isBefore(now)) {
+            dueCards++;
+          }
+      } catch (e) {
+          // Invalid date format
+        }
+      }
+      
+      totalEaseFactor += progress['ease_factor'] as double? ?? 2.5;
+    }
+    
+    return [{
+      'totalCards': totalCards,
+      'masteredCards': masteredCards,
+      'dueCards': dueCards,
+      'averageEaseFactor': totalCards > 0 ? totalEaseFactor / totalCards : 2.5,
+      'masteryPercentage': totalCards > 0 ? (masteredCards / totalCards) * 100 : 0.0,
+    }];
+  }
+
+  /// Build hierarchy recursively
+  static List<Map<String, dynamic>> _buildHierarchyRecursive(
+    List<Map<String, dynamic>> decks,
+    Map<int, List<Map<String, dynamic>>> childrenMap,
+  ) {
+    final List<Map<String, dynamic>> result = [];
+    
+    for (final deck in decks) {
+      final children = childrenMap[deck['id']] ?? [];
+      final childrenWithHierarchy = _buildHierarchyRecursive(children, childrenMap);
+      
+      final deckWithChildren = Map<String, dynamic>.from(deck);
+      deckWithChildren['children'] = childrenWithHierarchy;
+      result.add(deckWithChildren);
+    }
+    
+    return result;
   }
 
   /// Execute database operation in isolate
-  Future<T> executeDatabaseOperation<T>(
-    String operation,
-    Map<String, dynamic> params,
-  ) async {
-    if (_sendPort == null) {
-      // Fallback to main thread execution
-      return await _executeOnMainThread<T>(operation, params);
-    }
-
-    final requestId = ++_requestId;
+  Future<T> executeDatabaseOperation<T>(String operation, Map<String, dynamic> data) async {
+    final operationId = DateTime.now().millisecondsSinceEpoch.toString();
     final completer = Completer<T>();
-    _pendingRequests[requestId] = completer;
+    _pendingOperations[operationId] = completer;
 
-    try {
-      _sendPort!.send({
-        'requestId': requestId,
-        'operation': operation,
-        'params': params,
-      });
+    _backgroundSendPort?.send({
+      'operation': operation,
+      'operationId': operationId,
+      'data': data,
+    });
 
-      // Timeout after 30 seconds
-      Timer(Duration(seconds: 30), () {
-        if (_pendingRequests.containsKey(requestId)) {
-          _pendingRequests.remove(requestId);
-          completer.completeError('Database operation timeout');
-        }
-      });
-
-      return await completer.future;
-    } catch (e) {
-      _pendingRequests.remove(requestId);
-      AppLogger.error('Error executing operation in isolate: $e');
-      // Fallback to main thread execution
-      return await _executeOnMainThread<T>(operation, params);
-    }
+    return completer.future;
   }
 
-  /// Execute heavy computation in isolate
-  Future<T> executeComputation<T>(
-    String computation,
-    Map<String, dynamic> params,
-  ) async {
-    if (_sendPort == null) {
-      throw Exception('IsolateService not initialized');
-    }
-
-    final requestId = ++_requestId;
-    final completer = Completer<T>();
-    _pendingRequests[requestId] = completer;
-
-    try {
-      _sendPort!.send({
-        'requestId': requestId,
-        'computation': computation,
-        'params': params,
-      });
-
-      // Timeout after 10 seconds for computations
-      Timer(Duration(seconds: 10), () {
-        if (_pendingRequests.containsKey(requestId)) {
-          _pendingRequests.remove(requestId);
-          completer.completeError('Computation timeout');
-        }
-      });
-
-      return await completer.future;
-    } catch (e) {
-      _pendingRequests.remove(requestId);
-      rethrow;
-    }
-  }
-
-  /// Dispose the isolate service
-  Future<void> dispose() async {
-    if (_isolate != null) {
-      _sendPort?.send({'type': 'shutdown'});
-      _isolate?.kill();
-      _isolate = null;
-      _sendPort = null;
-    }
-    
-    if (_receivePort != null) {
-      _receivePort!.close();
-      _receivePort = null;
-    }
-    
-    // Complete all pending requests with error
-    for (final completer in _pendingRequests.values) {
-      completer.completeError('IsolateService disposed');
-    }
-    _pendingRequests.clear();
-  }
-
-  /// Fallback method to execute operations on main thread
-  Future<T> _executeOnMainThread<T>(
-    String operation,
-    Map<String, dynamic> params,
-  ) async {
-    
-    // Import database service for fallback
-    final databaseService = DatabaseService();
-    
-    switch (operation) {
-      case 'getCardsByCategory':
-        // Use the original method that doesn't use isolates
-        final cards = await databaseService.getCardsWithFieldsByDeck(params['categoryId'] as int);
-        // Get favorites and create flashcards
-        final db = await databaseService.database;
-        final favoritesResult = await db.rawQuery('''
-          SELECT dm.card_id
-          FROM DeckMembership dm
-          INNER JOIN Deck d ON dm.deck_id = d.id
-          WHERE d.name = 'Favorites' AND d.parent_id = (
-            SELECT id FROM Deck WHERE language = 'Japanese' AND parent_id IS NULL
-          )
-        ''');
-        
-        final Set<int> favoriteCardIds = favoritesResult
-            .map((row) => row['card_id'] as int)
-            .toSet();
-        
-        final flashcards = cards.map((card) {
-          final isFavorite = favoriteCardIds.contains(card.id);
-          return Flashcard.fromCard(card.copyWith(isFavorite: isFavorite));
-        }).toList();
-        
-        return flashcards as T;
-      case 'getDeckTree':
-        return await databaseService.getDeckTree() as T;
-      case 'getFavoriteCards':
-        return await databaseService.getFavoriteCards() as T;
-      default:
-        throw Exception('Operation $operation not supported in fallback mode');
-    }
+  /// Dispose the service
+  void dispose() {
+    _backgroundIsolate?.kill();
+    _backgroundReceivePort?.close();
+    _pendingOperations.clear();
   }
 }
 
-/// Entry point for the isolate
-void _isolateEntryPoint(SendPort sendPort) {
-  final receivePort = ReceivePort();
-  sendPort.send({
-    'type': 'ready',
-    'sendPort': receivePort.sendPort,
-  });
+/// Top-level function for JSON parsing in compute
+Future<Map<String, dynamic>> parseJsonInCompute(String jsonString) async {
+  return await compute(_parseJsonInCompute, jsonString);
+}
 
-  receivePort.listen((message) async {
-    if (message is Map<String, dynamic>) {
-      final requestId = message['requestId'] as int;
-      
-      try {
-        dynamic result;
-        
-        if (message.containsKey('operation')) {
-          result = await _handleDatabaseOperation(
-            message['operation'] as String,
-            message['params'] as Map<String, dynamic>,
-          );
-        } else if (message.containsKey('computation')) {
-          result = await _handleComputation(
-            message['computation'] as String,
-            message['params'] as Map<String, dynamic>,
-          );
-        } else if (message['type'] == 'shutdown') {
-          receivePort.close();
-          return;
-        }
+/// Top-level function for JSON encoding in compute
+Future<String> encodeJsonInCompute(Map<String, dynamic> data) async {
+  return await compute(_encodeJsonInCompute, data);
+}
 
-        sendPort.send({
-          'requestId': requestId,
-          'result': result,
-        });
-      } catch (e) {
-        sendPort.send({
-          'requestId': requestId,
-          'error': e.toString(),
-        });
-      }
-    }
+/// Top-level function for image processing in compute
+Future<Uint8List> processImageInCompute(Uint8List imageData, {
+  int? width,
+  int? height,
+  double? quality,
+}) async {
+  return await compute(_processImageInCompute, {
+    'imageData': imageData,
+    'width': width,
+    'height': height,
+    'quality': quality,
   });
 }
 
-/// Handle database operations in isolate
-Future<dynamic> _handleDatabaseOperation(
-  String operation,
-  Map<String, dynamic> params,
-) async {
-  // Import database service dynamically to avoid isolate issues
-  final databaseService = await _getDatabaseService();
-  
-  switch (operation) {
-    case 'getDeckTree':
-      return await databaseService.getDeckTree();
-    case 'getCardsByCategory':
-      return await databaseService.getCardsByCategory(params['categoryId'] as int);
-    case 'getFavoriteCards':
-      return await databaseService.getFavoriteCards();
-    case 'getIncorrectCardsFromDatabase':
-      return await databaseService.getIncorrectCardsFromDatabase(params['deckId'] as int);
-    case 'getSpacedRepetitionStats':
-      return await databaseService.getReviewStatsForCategory(params['categoryId'] as int);
-    case 'markCardIncorrectInDatabase':
-      return await databaseService.markCardIncorrectInDatabase(
-        params['cardId'] as int,
-        params['deckId'] as int,
-      );
-    case 'markCardCorrectInDatabase':
-      return await databaseService.markCardCorrectInDatabase(params['cardId'] as int);
-    case 'toggleFavorite':
-      return await databaseService.toggleFavorite(params['cardId'] as int);
-    case 'upsertUserProgress':
-      return await databaseService.upsertUserProgress(params['progress']);
-    case 'getUserProgress':
-      return await databaseService.getUserProgress(params['cardId'] as int);
-    case 'getFlashcardsDueForReview':
-      return await databaseService.getFlashcardsDueForReview(params['deckId'] as int);
-    default:
-      throw Exception('Unknown database operation: $operation');
-  }
+/// Top-level function for SRS calculation in compute
+Future<Map<String, dynamic>> calculateSRSInCompute(Map<String, dynamic> srsData) async {
+  return await compute(_calculateSRSInCompute, srsData);
 }
 
-/// Handle computations in isolate
-Future<dynamic> _handleComputation(
-  String computation,
-  Map<String, dynamic> params,
-) async {
-  switch (computation) {
-    case 'calculateSRS':
-      return await _calculateSRSInIsolate(params);
-    case 'buildDeckHierarchy':
-      return await _buildDeckHierarchyInIsolate(params);
-    case 'processCardData':
-      return await _processCardDataInIsolate(params);
-    default:
-      throw Exception('Unknown computation: $computation');
-  }
+/// Parse JSON in compute function
+Map<String, dynamic> _parseJsonInCompute(String jsonString) {
+  return jsonDecode(jsonString) as Map<String, dynamic>;
 }
 
-/// Get database service instance in isolate
-Future<dynamic> _getDatabaseService() async {
-  // Import and initialize database service in isolate
-  // This avoids sharing database connections across isolates
-  final databaseService = OptimizedDatabaseService();
-  await databaseService.initialize();
-  return databaseService;
+/// Encode JSON in compute function
+String _encodeJsonInCompute(Map<String, dynamic> data) {
+  return jsonEncode(data);
 }
 
-/// Calculate SRS in isolate
-Future<Map<String, dynamic>> _calculateSRSInIsolate(Map<String, dynamic> params) async {
-  // Import SRS service
-  final spacedRepetitionService = SpacedRepetitionService();
-  
-  final progress = params['progress'] as UserProgress;
-  final isCorrect = params['isCorrect'] as bool;
-  
-  final updatedProgress = spacedRepetitionService.calculateNextReviewFromProgress(
-    progress,
-    isCorrect,
-  );
-  
-  return updatedProgress.toMap();
+/// Process image in compute function
+Uint8List _processImageInCompute(Map<String, dynamic> data) {
+  final imageData = data['imageData'] as Uint8List;
+  // Note: width, height, quality parameters available for future implementation
+  // For now, return original data - implement actual image processing
+  return imageData;
 }
 
-/// Build deck hierarchy in isolate
-Future<List<Map<String, dynamic>>> _buildDeckHierarchyInIsolate(Map<String, dynamic> params) async {
-  final allDecks = params['decks'] as List<Map<String, dynamic>>;
+/// Calculate SRS in compute function
+Map<String, dynamic> _calculateSRSInCompute(Map<String, dynamic> data) {
+  final interval = data['interval'] as int;
+  final repetitions = data['repetitions'] as int;
+  final easeFactor = data['easeFactor'] as double;
+  final quality = data['quality'] as int;
   
-  // Convert to Deck objects
-  final decks = allDecks.map((map) => Deck.fromMap(map)).toList();
+  // SuperMemo 2 algorithm implementation
+  double newEaseFactor = easeFactor;
+  int newInterval = interval;
+  int newRepetitions = repetitions;
   
-  // Build hierarchy
-  final Map<int, List<Deck>> childrenMap = {};
-  final List<Deck> rootDecks = [];
-  
-  for (final deck in decks) {
-    if (deck.parentId == null) {
-      rootDecks.add(deck);
+  if (quality >= 3) {
+    // Correct answer
+    if (repetitions == 0) {
+      newInterval = 1;
+    } else if (repetitions == 1) {
+      newInterval = 6;
     } else {
-      childrenMap.putIfAbsent(deck.parentId!, () => []).add(deck);
+      newInterval = (interval * easeFactor).round();
     }
+    newRepetitions = repetitions + 1;
+    newEaseFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  } else {
+    // Incorrect answer
+    newRepetitions = 0;
+    newInterval = 1;
+    newEaseFactor = easeFactor - 0.2;
   }
   
-  final result = _buildHierarchyRecursiveInIsolate(rootDecks, childrenMap);
-  return result.map((deck) => deck.toMap()).toList();
-}
-
-/// Process card data in isolate
-Future<List<Map<String, dynamic>>> _processCardDataInIsolate(Map<String, dynamic> params) async {
-  final cards = params['cards'] as List<Map<String, dynamic>>;
-  final favoriteCardIds = params['favoriteCardIds'] as Set<int>;
+  // Clamp ease factor
+  newEaseFactor = newEaseFactor.clamp(1.3, 2.5);
   
-  return cards.map((cardMap) {
-    final card = Card.fromMap(cardMap);
-    final isFavorite = favoriteCardIds.contains(card.id);
-    return card.copyWith(isFavorite: isFavorite).toMap();
-  }).toList();
-}
-
-/// Recursively build hierarchy in isolate
-List<Deck> _buildHierarchyRecursiveInIsolate(List<Deck> decks, Map<int, List<Deck>> childrenMap) {
-  final List<Deck> result = [];
-  
-  for (final deck in decks) {
-    final children = childrenMap[deck.id] ?? [];
-    final childrenWithHierarchy = _buildHierarchyRecursiveInIsolate(children, childrenMap);
-    
-    final deckWithChildren = deck.copyWith(children: childrenWithHierarchy);
-    result.add(deckWithChildren);
-  }
-  
-  return result;
+  return {
+    'interval': newInterval,
+    'repetitions': newRepetitions,
+    'easeFactor': newEaseFactor,
+    'nextReview': DateTime.now().add(Duration(days: newInterval)).millisecondsSinceEpoch,
+  };
 }

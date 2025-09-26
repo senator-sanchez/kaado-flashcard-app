@@ -56,6 +56,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   final CardDisplayService _cardDisplayService = CardDisplayService.instance;
   final SpacedRepetitionService _spacedRepetitionService = SpacedRepetitionService();
   
+  // === Performance Optimization Services ===
+  // Note: Performance services are available but not actively used yet
+  // They can be integrated when needed for specific optimizations
+  
   // === UI State Management ===
   final GlobalKey<FabMenuState> _fabMenuKey = GlobalKey<FabMenuState>();
   List<Flashcard> _currentCards = [];

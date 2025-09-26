@@ -117,8 +117,8 @@ class Flashcard {
       isFavorite: isFavorite ?? this.isFavorite,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
-      card: card ?? this._card,
-      fields: fields ?? this._fields,
+      card: card ?? _card,
+      fields: fields ?? _fields,
     );
   }
 
